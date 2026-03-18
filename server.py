@@ -10,7 +10,6 @@ import os
 import secrets
 import sqlite3
 import subprocess
-import threading
 import time
 import urllib.request
 from contextlib import closing
@@ -23,7 +22,7 @@ REWRITE_TIMEOUT = 180  # 3 min timeout for claude rewrite
 
 PORT = 3200
 CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
-WORK_DIR = os.path.expanduser("~/.claude/workspace/telegram-bot")
+WORK_DIR = os.path.dirname(os.path.abspath(__file__))
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyA67P-IGUy-hw21eBVRoMNjLZcC31zCCv8")
 GEMINI_MODEL = "gemini-2.5-flash-image"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
@@ -529,6 +528,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json_error(400, "empty text"); return
 
         prompt = build_prompt(article, platform, fmt, goal, styles, lang)
+        # Send SSE headers immediately to keep connection alive during processing
         self.send_response(200); self._cors()
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
@@ -536,34 +536,28 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
         try:
-            proc = subprocess.Popen(
+            proc = subprocess.run(
                 [CLAUDE_BIN, "-p", "-", "--output-format", "text"],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                cwd=WORK_DIR,
+                input=prompt.encode("utf-8"),
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                cwd=WORK_DIR, timeout=REWRITE_TIMEOUT,
             )
-            proc.stdin.write(prompt.encode("utf-8"))
-            proc.stdin.close()
-            # Watchdog: kill subprocess if it runs too long
-            timer = threading.Timer(REWRITE_TIMEOUT, lambda: proc.kill())
-            timer.start()
-            try:
-                for line in iter(proc.stdout.readline, b""):
-                    text = line.decode("utf-8", errors="replace")
-                    sse_data = json.dumps({"text": text}, ensure_ascii=False)
-                    self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
-                    self.wfile.flush()
-                proc.wait()
-            finally:
-                timer.cancel()
             if proc.returncode != 0:
-                err = proc.stderr.read().decode("utf-8", errors="replace")
+                err = proc.stderr.decode("utf-8", errors="replace")
                 sse_data = json.dumps({"error": err}, ensure_ascii=False)
                 self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
-            self.wfile.write(b"data: [DONE]\n\n"); self.wfile.flush()
+            else:
+                result_text = proc.stdout.decode("utf-8", errors="replace").strip()
+                sse_data = json.dumps({"text": result_text}, ensure_ascii=False)
+                self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
+        except subprocess.TimeoutExpired:
+            sse_data = json.dumps({"error": "rewrite timed out"}, ensure_ascii=False)
+            self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
         except Exception as e:
             sse_data = json.dumps({"error": str(e)}, ensure_ascii=False)
             self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
-            self.wfile.write(b"data: [DONE]\n\n"); self.wfile.flush()
+
+        self.wfile.write(b"data: [DONE]\n\n"); self.wfile.flush()
 
     def _handle_save_history(self):
         try:

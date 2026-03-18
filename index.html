@@ -1,0 +1,2581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>思维进化</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ─── Design Tokens ─── */
+:root {
+  --bg:            #080810;
+  --bg-noise:      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  --surface:       #0f0f1a;
+  --surface2:      #141422;
+  --surface3:      #1a1a2e;
+  --border:        rgba(255,255,255,0.06);
+  --border-hover:  rgba(255,255,255,0.14);
+  --border-accent: rgba(167,139,250,0.35);
+  --text:          #e8e8f0;
+  --text-dim:      #8888a8;
+  --text-muted:    #555570;
+  --accent:        #a78bfa;
+  --accent2:       #38bdf8;
+  --accent-dim:    rgba(167,139,250,0.10);
+  --accent-glow:   rgba(167,139,250,0.08);
+  --accent2-dim:   rgba(56,189,248,0.10);
+  --success:       #4ade80;
+  --danger:        #f87171;
+  --radius-sm:     6px;
+  --radius:        10px;
+  --radius-lg:     16px;
+  --radius-xl:     20px;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.4);
+  --shadow:        0 4px 20px rgba(0,0,0,0.5);
+  --shadow-lg:     0 8px 40px rgba(0,0,0,0.6);
+  --transition:    0.2s cubic-bezier(0.4,0,0.2,1);
+  --font:          "Inter", "Noto Sans SC", system-ui, sans-serif;
+}
+
+/* ─── Reset & Base ─── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  background-image: var(--bg-noise);
+  color: var(--text);
+  font-family: var(--font);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 24px 100px;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+/* ─── Animated Mesh Background ─── */
+.mesh-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden;
+}
+.mesh-bg::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--bg);
+  z-index: 1;
+  opacity: 0.82;
+}
+.mesh-orb {
+  position: absolute; border-radius: 50%; filter: blur(100px);
+  will-change: transform;
+  z-index: 2;
+}
+.mesh-orb-1 {
+  width: 600px; height: 600px; top: -10%; left: -5%;
+  background: radial-gradient(circle, rgba(167,139,250,0.18) 0%, transparent 70%);
+  animation: orbFloat1 20s ease-in-out infinite;
+}
+.mesh-orb-2 {
+  width: 500px; height: 500px; top: 30%; right: -10%;
+  background: radial-gradient(circle, rgba(56,189,248,0.14) 0%, transparent 70%);
+  animation: orbFloat2 25s ease-in-out infinite;
+}
+.mesh-orb-3 {
+  width: 700px; height: 700px; bottom: -15%; left: 20%;
+  background: radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%);
+  animation: orbFloat3 22s ease-in-out infinite;
+}
+.mesh-orb-4 {
+  width: 400px; height: 400px; top: 50%; left: 50%;
+  background: radial-gradient(circle, rgba(236,72,153,0.08) 0%, transparent 70%);
+  animation: orbFloat4 18s ease-in-out infinite;
+}
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(80px, 60px) scale(1.1); }
+  66% { transform: translate(-40px, 30px) scale(0.95); }
+}
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-60px, 80px) scale(0.9); }
+  66% { transform: translate(40px, -40px) scale(1.05); }
+}
+@keyframes orbFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(50px, -70px) scale(1.08); }
+  66% { transform: translate(-80px, 20px) scale(0.92); }
+}
+@keyframes orbFloat4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-100px, -60px) scale(1.15); }
+}
+
+/* ─── Header ─── */
+.header {
+  text-align: center;
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 1;
+  animation: fadeSlideDown 0.6s ease both;
+}
+
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-dot {
+  width: 9px;
+  height: 9px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(167,139,250,0.6);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+  0%   { box-shadow: 0 0 0 0 rgba(167,139,250,0.7); }
+  60%  { box-shadow: 0 0 0 6px rgba(167,139,250,0); }
+  100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); }
+}
+
+.subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-top: 10px;
+  letter-spacing: 0.06em;
+  animation: fadeSlideDown 0.6s 0.1s ease both;
+}
+
+.container {
+  width: 100%;
+  max-width: min(90vw, 1160px);
+  position: relative;
+  z-index: 1;
+  animation: fadeSlideDown 0.6s 0.15s ease both;
+}
+
+/* ─── Card ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--transition);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.025) 0%, transparent 60%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+}
+
+.card-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title::before {
+  content: "";
+  display: block;
+  width: 3px;
+  height: 10px;
+  background: linear-gradient(to bottom, var(--accent), var(--accent2));
+  border-radius: 2px;
+}
+
+/* ─── Options Grid ─── */
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) { .options { grid-template-columns: 1fr; } }
+
+.opt-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.opt-group label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ─── Select ─── */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 10px 36px 10px 14px;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555570' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  width: 100%;
+}
+
+select:hover {
+  background-color: var(--surface3);
+  border-color: var(--border-hover);
+}
+
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  background-color: var(--surface3);
+}
+
+select option {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* ─── Tags ─── */
+.tag-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.tag-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  padding-top: 6px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tag {
+  position: relative;
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all var(--transition);
+  user-select: none;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.tag:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+  background: rgba(255,255,255,0.04);
+  transform: translateY(-1px);
+}
+
+.tag.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 0 12px rgba(167,139,250,0.15);
+}
+
+/* Tooltip */
+.tag::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface3);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition), transform var(--transition);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+
+.tag:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.style-custom {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+  padding: 5px 16px;
+  outline: none;
+  width: 130px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.style-custom::placeholder { color: var(--text-muted); }
+
+.style-custom:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* ─── Textarea ─── */
+textarea {
+  width: 100%;
+  min-height: 200px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 18px;
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  line-height: 1.85;
+}
+
+textarea:hover { border-color: var(--border-hover); }
+
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+textarea::placeholder { color: var(--text-muted); }
+
+/* Character count wrapper */
+.textarea-wrap { position: relative; }
+
+.char-count {
+  position: absolute;
+  bottom: 10px;
+  right: 14px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--transition);
+}
+
+.char-count.warn { color: var(--danger); }
+
+/* ─── Action Bar ─── */
+.actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 14px;
+  gap: 10px;
+}
+
+/* ─── Buttons ─── */
+button { font-family: inherit; cursor: pointer; transition: all var(--transition); }
+
+.btn-clear {
+  padding: 9px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.btn-clear:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+  background: rgba(255,255,255,0.04);
+}
+
+.btn-submit {
+  position: relative;
+  padding: 9px 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #a78bfa, #818cf8);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+}
+
+.btn-submit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent);
+  border-radius: inherit;
+}
+
+.btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(167,139,250,0.4);
+  filter: brightness(1.08);
+}
+
+.btn-submit:active { transform: translateY(0); }
+
+.btn-submit:disabled {
+  background: var(--surface2);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ─── Status ─── */
+.status {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-align: right;
+  min-height: 20px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.status.running { color: var(--accent); }
+
+.status.running::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+/* ─── Output Card ─── */
+.output-card {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  margin-top: 12px;
+  position: relative;
+  overflow: hidden;
+  animation: none;
+}
+
+.output-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.output-card.visible {
+  display: block;
+  animation: fadeSlideUp 0.35s ease both;
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.output-body {
+  display: flex;
+  gap: 24px;
+}
+
+@media (max-width: 700px) { .output-body { flex-direction: column; } }
+
+/* Left: text */
+.output-text-wrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.output-text {
+  line-height: 1.95;
+  font-size: 0.9rem;
+  color: var(--text);
+  padding-top: 32px;
+}
+
+.output-text h1, .output-text h2, .output-text h3 {
+  color: #fff;
+  margin: 18px 0 8px;
+  line-height: 1.4;
+}
+
+.output-text h1 { font-size: 1.25rem; }
+.output-text h2 { font-size: 1.05rem; }
+.output-text h3 { font-size: 0.95rem; }
+.output-text p  { margin-bottom: 10px; }
+
+.output-text strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.output-text em {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.output-text ul, .output-text ol {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.output-text li { margin-bottom: 5px; }
+
+.output-text blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 4px 0 4px 16px;
+  color: var(--text-dim);
+  margin: 12px 0;
+  font-style: italic;
+}
+
+.btn-copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--surface3);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.btn-copy:hover {
+  color: var(--accent);
+  border-color: var(--border-accent);
+  background: var(--accent-dim);
+}
+
+/* Right: image */
+.output-image-wrap {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+@media (max-width: 700px) { .output-image-wrap { width: 100%; } }
+
+.image-placeholder {
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: var(--surface2);
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  gap: 10px;
+  transition: border-color var(--transition);
+}
+
+.image-placeholder:hover { border-color: rgba(167,139,250,0.2); }
+
+.image-placeholder svg { opacity: 0.2; }
+
+.output-img {
+  width: 100%;
+  border-radius: var(--radius);
+  display: none;
+  cursor: zoom-in;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.output-img:hover {
+  transform: scale(1.01);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.output-img.visible { display: block; }
+
+.btn-gen-img {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  letter-spacing: 0.03em;
+  transition: all var(--transition);
+}
+
+.btn-gen-img:hover {
+  border-color: var(--border-accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+  transform: translateY(-1px);
+}
+
+.btn-gen-img:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.img-prompt {
+  width: 100%;
+  min-height: 80px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 12px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.6;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.img-prompt:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.img-prompt::placeholder { color: var(--text-muted); }
+
+.img-btn-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.img-btn-row .btn-gen-img { flex: 1; }
+
+/* ─── Login Overlay ─── */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.login-overlay.hidden { display: none; }
+
+/* Animated gradient background for login */
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.login-bg::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: -20%;
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(ellipse, rgba(167,139,250,0.12) 0%, transparent 60%);
+  animation: drift1 8s ease-in-out infinite alternate;
+}
+
+.login-bg::after {
+  content: "";
+  position: absolute;
+  bottom: -30%;
+  right: -20%;
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(ellipse, rgba(56,189,248,0.08) 0%, transparent 60%);
+  animation: drift2 10s ease-in-out infinite alternate;
+}
+
+@keyframes drift1 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(5%, 8%) scale(1.1); }
+}
+
+@keyframes drift2 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(-6%, -5%) scale(1.08); }
+}
+
+.login-box {
+  position: relative;
+  z-index: 1;
+  background: rgba(15, 15, 26, 0.85);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-xl);
+  padding: 40px 36px;
+  width: 360px;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(167,139,250,0.05) inset;
+  animation: loginAppear 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes loginAppear {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.login-box .logo {
+  margin-bottom: 8px;
+  justify-content: center;
+}
+
+.login-tagline {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  letter-spacing: 0.06em;
+}
+
+.login-box input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 12px 16px;
+  outline: none;
+  margin-bottom: 10px;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.login-box input:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.14);
+}
+
+.login-box input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  background: rgba(167,139,250,0.05);
+}
+
+.login-box input::placeholder { color: var(--text-muted); }
+
+.login-btn {
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #a78bfa, #818cf8);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 6px;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.04em;
+  transition: all var(--transition);
+}
+
+.login-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent);
+}
+
+.login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(167,139,250,0.45);
+  filter: brightness(1.08);
+}
+
+.login-btn:active { transform: translateY(0); }
+
+.login-btn:disabled {
+  background: var(--surface3);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.login-error {
+  color: var(--danger);
+  font-size: 0.78rem;
+  margin-top: 10px;
+  min-height: 20px;
+}
+
+/* ─── User Bar ─── */
+.user-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 24px;
+  gap: 8px;
+  z-index: 50;
+  background: rgba(8,8,16,0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  animation: fadeSlideDown 0.5s ease both;
+}
+
+.user-bar span#userDisplay {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.user-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  letter-spacing: 0.06em;
+}
+
+.user-badge.pro   { background: var(--accent-dim); color: var(--accent); }
+.user-badge.beta  { background: rgba(250,204,21,0.12); color: #facc15; }
+
+.btn-logout, .btn-history, .btn-lang {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: all var(--transition);
+}
+
+.btn-logout:hover, .btn-history:hover, .btn-lang:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+  background: rgba(255,255,255,0.05);
+}
+
+.btn-history:hover {
+  border-color: var(--border-accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.lang-indicator {
+  font-size: 0.65rem;
+  color: var(--accent2);
+  font-weight: 600;
+  padding: 2px 8px;
+  background: var(--accent2-dim);
+  border-radius: 99px;
+  display: none;
+  letter-spacing: 0.04em;
+}
+
+.lang-indicator.visible { display: inline; }
+
+/* ─── Password Modal ─── */
+.pw-overlay, .cu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.pw-overlay.visible, .cu-overlay.visible { display: flex; }
+
+.pw-box, .cu-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  width: 360px;
+  box-shadow: var(--shadow-lg);
+  animation: fadeSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+.pw-box h3, .cu-box h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 20px;
+  letter-spacing: -0.01em;
+}
+
+.pw-box input, .cu-box input, .cu-box select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  outline: none;
+  margin-bottom: 10px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.pw-box input:focus, .cu-box input:focus, .cu-box select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.pw-box input::placeholder, .cu-box input::placeholder { color: var(--text-muted); }
+
+.pw-btns, .cu-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pw-btns button, .cu-btns button {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.84rem;
+}
+
+.pw-btn-cancel, .cu-btn-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.pw-btn-cancel:hover, .cu-btn-cancel:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.pw-btn-save, .cu-btn-save {
+  border: none;
+  background: linear-gradient(135deg, #a78bfa, #818cf8);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pw-btn-save:hover, .cu-btn-save:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 16px rgba(167,139,250,0.35);
+}
+
+.pw-msg, .cu-msg {
+  font-size: 0.76rem;
+  margin-top: 10px;
+  min-height: 18px;
+}
+
+.pw-msg.err, .cu-msg.err { color: var(--danger); }
+.pw-msg.ok,  .cu-msg.ok  { color: var(--success); }
+
+/* ─── Standalone Image Gen ─── */
+.img-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  margin-top: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--transition);
+}
+
+.img-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(56,189,248,0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.img-card:hover { border-color: var(--border-hover); }
+
+.img-card-body {
+  display: flex;
+  gap: 24px;
+}
+
+@media (max-width: 700px) { .img-card-body { flex-direction: column; } }
+
+.img-card-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.img-card-left textarea {
+  min-height: 110px;
+}
+
+.img-selectors {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.img-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.img-selector-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.img-card-right {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+@media (max-width: 700px) { .img-card-right { width: 100%; } }
+
+.img-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.img-card-actions .btn-gen-img { flex: 1; }
+
+.img-card .output-img {
+  width: 100%;
+  border-radius: var(--radius);
+}
+
+.img-card .image-placeholder {
+  width: 100%;
+  aspect-ratio: 1/1;
+  background: var(--surface2);
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  gap: 10px;
+  transition: border-color var(--transition);
+}
+
+.img-card .image-placeholder:hover { border-color: rgba(56,189,248,0.2); }
+.img-card .image-placeholder svg { opacity: 0.2; }
+
+.btn-download {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  text-align: center;
+  display: none;
+  width: 100%;
+  transition: all var(--transition);
+}
+
+.btn-download:hover {
+  border-color: var(--border-accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* ─── History Panel ─── */
+.history-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 80;
+  display: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.history-overlay.visible { display: block; }
+
+.history-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 92vw);
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  z-index: 81;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.5);
+}
+
+.history-panel.visible {
+  display: flex;
+  animation: slideInRight 0.3s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,8,16,0.8);
+  backdrop-filter: blur(12px);
+}
+
+.history-header h2 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-header h2 .count {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.btn-close-history {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-close-history:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.history-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.history-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), var(--accent2));
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.history-item:hover {
+  border-color: var(--border-hover);
+  transform: translateX(2px);
+  background: var(--surface2);
+}
+
+.history-item:hover::before { opacity: 1; }
+
+.history-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.history-item-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.history-item-tag {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.history-item-date {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-item-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.history-item-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.history-item-preview {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.history-load-more {
+  text-align: center;
+  padding: 14px;
+}
+
+.btn-load-more {
+  padding: 8px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-load-more:hover {
+  border-color: var(--border-accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.history-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  padding: 60px 20px;
+  line-height: 1.7;
+}
+
+/* ─── Lightbox ─── */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.lightbox.visible {
+  display: flex;
+  animation: lightboxIn 0.25s ease both;
+}
+
+@keyframes lightboxIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.lightbox img {
+  max-width: 92vw;
+  max-height: 90vh;
+  border-radius: var(--radius);
+  box-shadow: 0 16px 80px rgba(0,0,0,0.8);
+  animation: lightboxImgIn 0.3s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+
+@keyframes lightboxImgIn {
+  from { transform: scale(0.92); }
+  to   { transform: scale(1); }
+}
+
+.lightbox-download {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 9px 28px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  z-index: 201;
+  transition: all var(--transition);
+  backdrop-filter: blur(8px);
+}
+
+.lightbox-download:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.3);
+}
+
+/* ─── Divider ─── */
+.section-divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 20px 0 8px;
+}
+
+.section-divider span {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.section-divider::before, .section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 480px) {
+  body { padding: 64px 16px 80px; }
+  .card, .img-card, .output-card { padding: 18px 16px; }
+  .user-bar { padding: 0 16px; gap: 6px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Ambient glows -->
+<div class="mesh-bg">
+  <div class="mesh-orb mesh-orb-1"></div>
+  <div class="mesh-orb mesh-orb-2"></div>
+  <div class="mesh-orb mesh-orb-3"></div>
+  <div class="mesh-orb mesh-orb-4"></div>
+</div>
+
+<!-- ─── Login Overlay ─── -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-bg"></div>
+  <div class="login-box">
+    <div class="logo"><span class="logo-dot"></span>思维进化</div>
+    <div class="login-tagline">Thought Evolution — Gerald</div>
+    <input type="text" id="loginUser" placeholder="用户名" autocomplete="username" />
+    <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password" />
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">登录</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ─── User Bar ─── -->
+<div class="user-bar" id="userBar" style="display:none">
+  <span id="userDisplay"></span>
+  <span class="user-badge" id="userBadge" style="display:none"></span>
+  <button class="btn-lang" id="btnLang" onclick="toggleLang()">EN</button>
+  <button class="btn-history" onclick="openHistory()" id="btnHistory">历史</button>
+  <button class="btn-history" onclick="openChangePw()">密码</button>
+  <button class="btn-history" id="btnCreateUser" onclick="openCreateUser()" style="display:none">新建用户</button>
+  <button class="btn-logout" onclick="doLogout()">退出</button>
+</div>
+
+<!-- ─── Password Modal ─── -->
+<div class="pw-overlay" id="pwOverlay">
+  <div class="pw-box">
+    <h3>修改密码</h3>
+    <input type="password" id="pwOld" placeholder="当前密码" />
+    <input type="password" id="pwNew" placeholder="新密码（至少6位）" />
+    <input type="password" id="pwConfirm" placeholder="确认新密码" />
+    <div class="pw-btns">
+      <button class="pw-btn-cancel" onclick="closePwModal()">取消</button>
+      <button class="pw-btn-save" onclick="submitChangePw()">保存</button>
+    </div>
+    <div class="pw-msg" id="pwMsg"></div>
+  </div>
+</div>
+
+<!-- ─── Create User Modal ─── -->
+<div class="cu-overlay" id="cuOverlay">
+  <div class="cu-box">
+    <h3>新建用户</h3>
+    <input type="text" id="cuUser" placeholder="用户名（至少2位）" autocomplete="off" />
+    <input type="password" id="cuPass" placeholder="密码（至少6位）" autocomplete="new-password" />
+    <select id="cuLabel">
+      <option value="">普通用户</option>
+      <option value="PRO">PRO</option>
+      <option value="内测">内测</option>
+    </select>
+    <div class="cu-btns">
+      <button class="cu-btn-cancel" onclick="closeCuModal()">取消</button>
+      <button class="cu-btn-save" onclick="submitCreateUser()">创建</button>
+    </div>
+    <div class="cu-msg" id="cuMsg"></div>
+  </div>
+</div>
+
+<!-- ─── History Panel ─── -->
+<div class="history-overlay" id="historyOverlay" onclick="closeHistory()"></div>
+<div class="history-panel" id="historyPanel">
+  <div class="history-header">
+    <h2>历史记录 <span class="count" id="historyCount"></span></h2>
+    <button class="btn-close-history" onclick="closeHistory()">关闭</button>
+  </div>
+  <div class="history-list" id="historyList"></div>
+</div>
+
+<!-- ─── Main Header ─── -->
+<div class="header">
+  <div class="logo"><span class="logo-dot"></span>思维进化</div>
+  <p class="subtitle">粘贴语料，一键改写 &mdash; Gerald</p>
+</div>
+
+<div class="container">
+
+  <!-- ─── Config Card ─── -->
+  <div class="card">
+    <div class="card-title">配置</div>
+    <div class="options">
+      <div class="opt-group">
+        <label>平台</label>
+        <select id="platform" onchange="onPlatformChange()">
+          <option value="wechat">微信</option>
+          <option value="xiaohongshu">小红书</option>
+          <option value="weibo">微博</option>
+          <option value="x">X (Twitter)</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <label>格式</label>
+        <select id="format"></select>
+      </div>
+    </div>
+
+    <div class="tag-row">
+      <span class="tag-label">目标</span>
+      <div class="tags" id="goalTags">
+        <span class="tag active" data-val="share" onclick="setGoal(this)" title="例：最近发现一个超好用的工具，真心推荐">真诚分享</span>
+        <span class="tag" data-val="growth" onclick="setGoal(this)" title="例：99%的人都不知道的AI神器，最后一个绝了">涨粉</span>
+        <span class="tag" data-val="promo" onclick="setGoal(this)" title="例：用了这个之后效率直接翻倍（附链接）">推广</span>
+        <span class="tag" data-val="edu" onclick="setGoal(this)" title="例：一文讲清大模型的工作原理，小白也能懂">科普</span>
+        <span class="tag" data-val="brand" onclick="setGoal(this)" title="例：做AI自媒体三个月，聊聊我的方法论">品牌塑造</span>
+      </div>
+    </div>
+
+    <div class="tag-row">
+      <span class="tag-label">风格</span>
+      <div class="tags">
+        <span class="tag" onclick="toggleTag(this)" title="例：这个功能真的帮了大忙，忍不住想分享给你们">温暖</span>
+        <span class="tag" onclick="toggleTag(this)" title="例：你以为AI离你很远？它已经在替你写周报了">扎心</span>
+        <span class="tag" onclick="toggleTag(this)" title="例：AI写代码比我快，但它不会摸鱼啊">幽默</span>
+        <span class="tag" onclick="toggleTag(this)" title="例：该模型在基准测试中实现了23%的性能提升">专业</span>
+        <span class="tag" onclick="toggleTag(this)" title="例：别再吹了，落地才是唯一的检验标准">犀利</span>
+        <span class="tag" onclick="toggleTag(this)" title="例：技术的浪潮里，每个人都是一叶扁舟">文艺</span>
+        <span class="tag" onclick="toggleTag(this)" title="例：说人话就是——这玩意儿能帮你省一半时间">接地气</span>
+        <span class="tag" onclick="toggleTag(this)" title="例：当算力成为新的基础设施，格局已然改写">高级感</span>
+      </div>
+      <input class="style-custom" id="customStyle" type="text" placeholder="自定义..." />
+    </div>
+  </div>
+
+  <!-- ─── Input Card ─── -->
+  <div class="card">
+    <div class="card-title">原文</div>
+    <div class="textarea-wrap">
+      <textarea id="input" placeholder="在此粘贴文章原文..." oninput="updateCharCount()"></textarea>
+      <span class="char-count" id="charCount"></span>
+    </div>
+    <div class="actions-bar">
+      <button class="btn-clear" onclick="clearAll()">清空</button>
+      <span class="lang-indicator" id="langIndicator">English output</span>
+      <button class="btn-submit" id="btnSubmit" onclick="submitRewrite()">开始改写</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <!-- ─── Output Card ─── -->
+  <div class="output-card" id="outputCard">
+    <div class="card-title">改写结果</div>
+    <div class="output-body">
+      <div class="output-text-wrap">
+        <div class="output-text" id="output"></div>
+      </div>
+      <div class="output-image-wrap" id="imageWrap">
+        <textarea class="img-prompt" id="imgPrompt" placeholder="点击下方按钮，AI 会根据文章生成绘图提示词..."></textarea>
+        <div class="img-btn-row">
+          <button class="btn-gen-img" id="btnAnalyze" onclick="analyzeForImage()">生成提示词</button>
+          <button class="btn-gen-img" id="btnGenImg" onclick="genImage()" disabled>生成配图</button>
+        </div>
+        <div class="image-placeholder" id="imgPlaceholder">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>配图预览</span>
+        </div>
+        <img class="output-img" id="outputImg" onclick="openLightbox(this.src)" style="cursor:zoom-in" />
+        <a class="btn-download" id="rewriteDownload" download>下载图片</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Standalone Image Gen ─── -->
+  <div class="section-divider"><span>独立生图</span></div>
+
+  <div class="img-card">
+    <div class="card-title">独立生图</div>
+    <div class="img-card-body">
+      <div class="img-card-left">
+        <textarea id="soloImgPrompt" placeholder="输入图片描述..."></textarea>
+        <div class="img-selectors">
+          <div class="img-selector-group">
+            <span class="img-selector-label">比例</span>
+            <select id="soloAspect" style="flex:1">
+              <option value="1:1">1:1 正方形</option>
+              <option value="3:4">3:4 竖版</option>
+              <option value="4:3">4:3 横版</option>
+              <option value="9:16">9:16 手机全屏</option>
+              <option value="16:9">16:9 宽屏</option>
+              <option value="2.35:1">2.35:1 公众号封面</option>
+            </select>
+          </div>
+          <div class="img-selector-group">
+            <span class="img-selector-label">风格</span>
+            <select id="soloStyle" style="flex:1">
+              <option value="">不指定</option>
+              <option value="realistic photo">写实摄影</option>
+              <option value="anime illustration">动漫插画</option>
+              <option value="3D render">3D 渲染</option>
+              <option value="oil painting">油画</option>
+              <option value="watercolor">水彩</option>
+              <option value="flat vector illustration">扁平矢量</option>
+              <option value="pixel art">像素风</option>
+              <option value="cinematic dramatic lighting">电影戏剧</option>
+              <option value="fantasy concept art">魔幻概念</option>
+              <option value="sci-fi futuristic">科幻未来</option>
+              <option value="minimalist">极简</option>
+              <option value="surrealist">超现实</option>
+            </select>
+          </div>
+        </div>
+        <div class="img-card-actions">
+          <button class="btn-gen-img" id="btnSoloGen" onclick="soloGenImage()">生成图片</button>
+        </div>
+      </div>
+      <div class="img-card-right">
+        <div class="image-placeholder" id="soloPlaceholder">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>图片预览</span>
+        </div>
+        <img class="output-img" id="soloImg" style="display:none;width:100%;border-radius:var(--radius);cursor:zoom-in" onclick="openLightbox(this.src)" />
+        <a class="btn-download" id="soloDownload" download>下载图片</a>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ─── Lightbox ─── -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" />
+  <a class="lightbox-download" id="lightboxDownload" download onclick="event.stopPropagation()">下载图片</a>
+</div>
+
+<script>
+/* ─── Lightbox ─── */
+function openLightbox(src) {
+  const lb = document.getElementById("lightbox");
+  document.getElementById("lightboxImg").src = src;
+  document.getElementById("lightboxDownload").href = src;
+  lb.classList.add("visible");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("visible");
+}
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeLightbox();
+});
+
+const BACKEND = location.origin;
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ─── Auth ─── */
+let authToken = localStorage.getItem("te-token") || "";
+let currentHistoryId = null;
+
+function authHeaders() {
+  return { "Content-Type": "application/json", "Authorization": "Bearer " + authToken };
+}
+
+async function checkAuth() {
+  if (!authToken) { showLogin(); return; }
+  try {
+    const r = await fetch(BACKEND + "/api/me", { headers: authHeaders() });
+    if (r.ok) {
+      const d = await r.json();
+      hideLogin(d.user, d.tier, d.label, d.can_create);
+    } else { showLogin(); }
+  } catch(e) { showLogin(); }
+}
+
+function showLogin() {
+  document.getElementById("loginOverlay").classList.remove("hidden");
+  document.getElementById("userBar").style.display = "none";
+}
+
+function hideLogin(user, tier, label, canCreate) {
+  document.getElementById("loginOverlay").classList.add("hidden");
+  document.getElementById("userBar").style.display = "flex";
+  document.getElementById("userDisplay").textContent = user;
+  // Remove old badges
+  document.querySelectorAll(".user-badge-dynamic").forEach(e => e.remove());
+  const anchor = document.getElementById("userBadge");
+  anchor.style.display = "none";
+  if (label) {
+    const labels = label.split(",").map(l => l.trim()).filter(Boolean);
+    labels.forEach(l => {
+      const span = document.createElement("span");
+      span.className = "user-badge user-badge-dynamic " + (l === "PRO" ? "pro" : "beta");
+      span.textContent = l;
+      anchor.parentNode.insertBefore(span, anchor);
+    });
+  }
+  document.getElementById("btnCreateUser").style.display = canCreate ? "" : "none";
+}
+
+async function doLogin() {
+  const btn = document.getElementById("loginBtn");
+  const errEl = document.getElementById("loginError");
+  const user = document.getElementById("loginUser").value.trim();
+  const pass = document.getElementById("loginPass").value;
+  if (!user || !pass) { errEl.textContent = "请输入用户名和密码"; return; }
+  btn.disabled = true; errEl.textContent = "";
+  try {
+    const r = await fetch(BACKEND + "/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: user, password: pass }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      authToken = d.token;
+      localStorage.setItem("te-token", authToken);
+      hideLogin(d.user, d.tier, d.label, d.can_create);
+    } else {
+      errEl.textContent = "用户名或密码错误";
+    }
+  } catch(e) { errEl.textContent = "连接失败"; }
+  btn.disabled = false;
+}
+
+async function doLogout() {
+  try { await fetch(BACKEND + "/api/logout", { method: "POST", headers: authHeaders() }); } catch(e) {}
+  authToken = "";
+  localStorage.removeItem("te-token");
+  showLogin();
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !document.getElementById("loginOverlay").classList.contains("hidden")) doLogin();
+});
+
+/* ─── i18n ─── */
+const I18N = {
+  zh: {
+    logo: "思维进化",
+    subtitle: "粘贴语料，一键改写 — Gerald",
+    config: "配置", platform: "平台", format: "格式",
+    goalLabel: "目标", styleLabel: "风格",
+    goalShare: "真诚分享", goalGrowth: "涨粉", goalPromo: "推广", goalEdu: "科普", goalBrand: "品牌塑造",
+    styleWarm: "温暖", styleEdgy: "扎心", styleHumor: "幽默", stylePro: "专业",
+    styleSharp: "犀利", styleLit: "文艺", styleDown: "接地气", stylePremium: "高级感",
+    tipShare: "例：最近发现一个超好用的工具，真心推荐",
+    tipGrowth: "例：99%的人都不知道的AI神器，最后一个绝了",
+    tipPromo: "例：用了这个之后效率直接翻倍（附链接）",
+    tipEdu: "例：一文讲清大模型的工作原理，小白也能懂",
+    tipBrand: "例：做AI自媒体三个月，聊聊我的方法论",
+    tipWarm: "例：这个功能真的帮了大忙，忍不住想分享给你们",
+    tipEdgy: "例：你以为AI离你很远？它已经在替你写周报了",
+    tipHumor: "例：AI写代码比我快，但它不会摸鱼啊",
+    tipPro: "例：该模型在基准测试中实现了23%的性能提升",
+    tipSharp: "例：别再吹了，落地才是唯一的检验标准",
+    tipLit: "例：技术的浪潮里，每个人都是一叶扁舟",
+    tipDown: "例：说人话就是——这玩意儿能帮你省一半时间",
+    tipPremium: "例：当算力成为新的基础设施，格局已然改写",
+    customPlaceholder: "自定义...",
+    inputTitle: "原文", inputPlaceholder: "在此粘贴文章原文...",
+    clear: "清空", submit: "开始改写", submitting: "改写中...",
+    outputTitle: "改写结果", copy: "复制", copied: "已复制",
+    genPrompt: "生成提示词", analyzing: "分析中...",
+    genImg: "生成配图", generating: "生成中...",
+    imgPreview: "配图预览",
+    soloTitle: "独立生图", soloPlaceholder: "输入图片描述...",
+    aspect: "比例", style: "风格", soloGen: "生成图片",
+    imgPreviewSolo: "图片预览", download: "下载图片", imgPromptPlaceholder: "点击下方按钮，AI 会根据文章生成绘图提示词...",
+    history: "历史", password: "密码", createUser: "新建用户", logout: "退出",
+    calling: "正在调用 Claude Code...", done: "完成",
+    historyTitle: "历史记录", close: "关闭", loadMore: "加载更多",
+    noHistory: "还没有历史记录", genTag: "生图",
+  },
+  en: {
+    logo: "Thought Evolution",
+    subtitle: "Paste content, one-click rewrite — Gerald",
+    config: "CONFIG", platform: "Platform", format: "Format",
+    goalLabel: "Goal", styleLabel: "Style",
+    goalShare: "Share", goalGrowth: "Growth", goalPromo: "Promo", goalEdu: "Educate", goalBrand: "Branding",
+    styleWarm: "Warm", styleEdgy: "Edgy", styleHumor: "Humor", stylePro: "Pro",
+    styleSharp: "Sharp", styleLit: "Literary", styleDown: "Casual", stylePremium: "Premium",
+    tipShare: "e.g. Just found an amazing tool — had to share it with you",
+    tipGrowth: "e.g. AI tools 99% of people don't know about — the last one is wild",
+    tipPromo: "e.g. This doubled my productivity overnight (link below)",
+    tipEdu: "e.g. How LLMs actually work — explained so anyone can get it",
+    tipBrand: "e.g. 3 months as an AI content creator — here's my playbook",
+    tipWarm: "e.g. This feature was a lifesaver — I just had to tell you about it",
+    tipEdgy: "e.g. Think AI is far away? It's already writing your weekly reports",
+    tipHumor: "e.g. AI codes faster than me, but at least it can't slack off",
+    tipPro: "e.g. The model achieved a 23% performance gain on benchmarks",
+    tipSharp: "e.g. Enough hype — real-world results are the only metric that matters",
+    tipLit: "e.g. In the tide of technology, we are all small boats adrift",
+    tipDown: "e.g. In plain English — this thing saves you half the time",
+    tipPremium: "e.g. When compute becomes infrastructure, the game has already changed",
+    customPlaceholder: "Custom...",
+    inputTitle: "SOURCE", inputPlaceholder: "Paste source article here...",
+    clear: "Clear", submit: "Rewrite", submitting: "Rewriting...",
+    outputTitle: "REWRITE RESULT", copy: "Copy", copied: "Copied",
+    genPrompt: "Gen Prompt", analyzing: "Analyzing...",
+    genImg: "Gen Image", generating: "Generating...",
+    imgPreview: "Image Preview",
+    soloTitle: "IMAGE GENERATOR", soloPlaceholder: "Enter image description...",
+    aspect: "Ratio", style: "Style", soloGen: "Generate",
+    imgPreviewSolo: "Preview", download: "Download", imgPromptPlaceholder: "Click below to generate image prompt from article...",
+    history: "History", password: "Password", createUser: "New User", logout: "Logout",
+    calling: "Calling Claude Code...", done: "Done",
+    historyTitle: "History", close: "Close", loadMore: "Load More",
+    noHistory: "No history yet", genTag: "Image",
+  }
+};
+
+let uiLang = localStorage.getItem("te-lang") || "zh";
+
+function t(key) { return I18N[uiLang][key] || I18N.zh[key] || key; }
+
+function toggleLang() {
+  uiLang = uiLang === "zh" ? "en" : "zh";
+  localStorage.setItem("te-lang", uiLang);
+  applyLang();
+}
+
+function detectInputLang(text) {
+  // Count ASCII letters vs non-ASCII chars
+  let ascii = 0, nonAscii = 0;
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    if (code >= 65 && code <= 122) ascii++;
+    else if (code > 127) nonAscii++;
+  }
+  return ascii > nonAscii * 2 ? "en" : "zh";
+}
+
+function applyLang() {
+  const L = I18N[uiLang];
+  document.getElementById("btnLang").textContent = uiLang === "zh" ? "EN" : "中";
+  // Header
+  document.querySelectorAll(".logo").forEach(el => {
+    if (!el.closest(".login-box")) el.innerHTML = '<span class="logo-dot"></span>' + t("logo");
+  });
+  document.querySelector(".login-box .logo").innerHTML = '<span class="logo-dot"></span>' + t("logo");
+  document.querySelector(".subtitle").textContent = t("subtitle");
+  // Cards
+  document.querySelectorAll(".card-title").forEach((el, i) => {
+    if (i === 0) el.textContent = t("config");
+    if (i === 1) el.textContent = t("inputTitle");
+  });
+  document.querySelector(".output-card .card-title").textContent = t("outputTitle");
+  document.querySelector(".img-card .card-title").textContent = t("soloTitle");
+  // Labels
+  const optLabels = document.querySelectorAll(".opt-group label");
+  if (optLabels[0]) optLabels[0].textContent = t("platform");
+  if (optLabels[1]) optLabels[1].textContent = t("format");
+  const tagLabels = document.querySelectorAll(".tag-label");
+  if (tagLabels[0]) tagLabels[0].textContent = t("goalLabel");
+  if (tagLabels[1]) tagLabels[1].textContent = t("styleLabel");
+  // Goal tags
+  const goalKeys = ["goalShare","goalGrowth","goalPromo","goalEdu","goalBrand"];
+  const goalTipKeys = ["tipShare","tipGrowth","tipPromo","tipEdu","tipBrand"];
+  document.querySelectorAll("#goalTags .tag").forEach((el, i) => { if (goalKeys[i]) { el.childNodes[0].textContent = t(goalKeys[i]); el.title = t(goalTipKeys[i]); } });
+  // Style tags
+  const styleKeys = ["styleWarm","styleEdgy","styleHumor","stylePro","styleSharp","styleLit","styleDown","stylePremium"];
+  const styleTipKeys = ["tipWarm","tipEdgy","tipHumor","tipPro","tipSharp","tipLit","tipDown","tipPremium"];
+  document.querySelectorAll(".tag-row:last-of-type .tags .tag").forEach((el, i) => { if (styleKeys[i]) { el.childNodes[0].textContent = t(styleKeys[i]); el.title = t(styleTipKeys[i]); } });
+  // Inputs
+  document.getElementById("input").placeholder = t("inputPlaceholder");
+  document.getElementById("customStyle").placeholder = t("customPlaceholder");
+  document.getElementById("soloImgPrompt").placeholder = t("soloPlaceholder");
+  // Buttons
+  document.querySelector(".btn-clear").textContent = t("clear");
+  const submitBtn = document.getElementById("btnSubmit");
+  if (!submitBtn.disabled) submitBtn.textContent = t("submit");
+  document.getElementById("btnAnalyze").textContent = t("genPrompt");
+  const genBtn = document.getElementById("btnGenImg");
+  if (!genBtn.disabled || genBtn.textContent !== t("generating")) genBtn.textContent = t("genImg");
+  document.getElementById("btnSoloGen").textContent = t("soloGen");
+  // User bar
+  document.getElementById("btnHistory").textContent = t("history");
+  document.querySelectorAll(".btn-history").forEach(el => {
+    if (el.onclick && el.onclick.toString().includes("openChangePw")) el.textContent = t("password");
+    if (el.id === "btnCreateUser") el.textContent = t("createUser");
+  });
+  document.querySelector(".btn-logout").textContent = t("logout");
+  // Solo labels
+  document.querySelectorAll(".img-selector-label").forEach(el => {
+    if (el.textContent.match(/比例|Ratio/)) el.textContent = t("aspect");
+    if (el.textContent.match(/风格|Style/)) el.textContent = t("style");
+  });
+  // imgPrompt placeholder
+  document.getElementById("imgPrompt").placeholder = t("imgPromptPlaceholder");
+  // Image placeholder spans
+  const imgPh = document.querySelector("#imgPlaceholder span");
+  if (imgPh) imgPh.textContent = t("imgPreview");
+  const soloPh = document.querySelector("#soloPlaceholder span");
+  if (soloPh) soloPh.textContent = t("imgPreviewSolo");
+  // Platform dropdown options
+  const platSel = document.getElementById("platform");
+  const pn = PLATFORM_NAMES[uiLang];
+  Array.from(platSel.options).forEach(opt => { if (pn[opt.value]) opt.textContent = pn[opt.value]; });
+  // Format dropdown
+  onPlatformChange();
+  // Aspect ratio dropdown
+  const aspectSel = document.getElementById("soloAspect");
+  const ao = ASPECT_OPTIONS[uiLang];
+  Array.from(aspectSel.options).forEach((opt, i) => { if (ao[i]) opt.textContent = ao[i].t; });
+  // Style dropdown
+  const styleSel = document.getElementById("soloStyle");
+  const so = STYLE_OPTIONS[uiLang];
+  Array.from(styleSel.options).forEach((opt, i) => { if (so[i]) opt.textContent = so[i].t; });
+  // Download buttons
+  document.getElementById("rewriteDownload").textContent = t("download");
+  document.getElementById("soloDownload").textContent = t("download");
+  document.getElementById("lightboxDownload").textContent = t("download");
+}
+
+const STORAGE_KEY = "thought-evolution";
+
+const PLATFORM_NAMES = {
+  zh: { wechat: "微信", xiaohongshu: "小红书", weibo: "微博", x: "X" },
+  en: { wechat: "WeChat", xiaohongshu: "Xiaohongshu", weibo: "Weibo", x: "X" }
+};
+const FORMAT_MAP = {
+  zh: {
+    wechat:      [{v:"mass",t:"群发消息",d:"直接发到微信群或好友，简短有力"},{v:"moments",t:"朋友圈",d:"配图文案，控制在几行内，适合碎片化阅读"},{v:"mp",t:"公众号",d:"长文深度内容，有标题、分段、排版"}],
+    xiaohongshu: [{v:"long",t:"图文笔记",d:"配多图的长内容，适合教程和干货分享"},{v:"short",t:"短笔记",d:"几句话+配图，轻松随意，适合种草和日常"}],
+    weibo:       [{v:"longpost",t:"长微博",d:"突破140字限制，适合深度观点和分析"},{v:"short",t:"短微博",d:"140字以内，短平快，适合热点和吐槽"}],
+    x:           [{v:"tweet",t:"推文",d:"280字符内，单条精炼表达"},{v:"thread",t:"长推文",d:"多条串联，适合讲故事和深度讨论"}],
+  },
+  en: {
+    wechat:      [{v:"mass",t:"Mass Message",d:"Direct to groups or friends, short and punchy"},{v:"moments",t:"Moments",d:"Photo captions, a few lines, casual reading"},{v:"mp",t:"Official Account",d:"Long-form content with headings and formatting"}],
+    xiaohongshu: [{v:"long",t:"Photo Essay",d:"Multi-image long content for tutorials"},{v:"short",t:"Short Note",d:"A few lines + photos, casual and fun"}],
+    weibo:       [{v:"longpost",t:"Long Post",d:"Beyond 140 chars, for deep analysis"},{v:"short",t:"Short Post",d:"Under 140 chars, quick and sharp"}],
+    x:           [{v:"tweet",t:"Tweet",d:"Under 280 chars, concise expression"},{v:"thread",t:"Thread",d:"Multi-tweet chain for stories and deep dives"}],
+  }
+};
+const FORMAT_NAMES = {};
+Object.values(FORMAT_MAP.zh).flat().forEach(f => { FORMAT_NAMES[f.v] = f.t; });
+const FORMAT_NAMES_EN = {};
+Object.values(FORMAT_MAP.en).flat().forEach(f => { FORMAT_NAMES_EN[f.v] = f.t; });
+
+const ASPECT_OPTIONS = {
+  zh: [{v:"1:1",t:"1:1 正方形"},{v:"3:4",t:"3:4 竖版"},{v:"4:3",t:"4:3 横版"},{v:"9:16",t:"9:16 手机全屏"},{v:"16:9",t:"16:9 宽屏"},{v:"2.35:1",t:"2.35:1 公众号封面"}],
+  en: [{v:"1:1",t:"1:1 Square"},{v:"3:4",t:"3:4 Portrait"},{v:"4:3",t:"4:3 Landscape"},{v:"9:16",t:"9:16 Mobile"},{v:"16:9",t:"16:9 Widescreen"},{v:"2.35:1",t:"2.35:1 Banner"}]
+};
+const STYLE_OPTIONS = {
+  zh: [{v:"",t:"不指定"},{v:"realistic photo",t:"写实摄影"},{v:"anime illustration",t:"动漫插画"},{v:"3D render",t:"3D 渲染"},{v:"oil painting",t:"油画"},{v:"watercolor",t:"水彩"},{v:"flat vector illustration",t:"扁平矢量"},{v:"pixel art",t:"像素风"},{v:"cinematic dramatic lighting",t:"电影戏剧"},{v:"fantasy concept art",t:"魔幻概念"},{v:"sci-fi futuristic",t:"科幻未来"},{v:"minimalist",t:"极简"},{v:"surrealist",t:"超现实"}],
+  en: [{v:"",t:"No style"},{v:"realistic photo",t:"Realistic Photo"},{v:"anime illustration",t:"Anime"},{v:"3D render",t:"3D Render"},{v:"oil painting",t:"Oil Painting"},{v:"watercolor",t:"Watercolor"},{v:"flat vector illustration",t:"Flat Vector"},{v:"pixel art",t:"Pixel Art"},{v:"cinematic dramatic lighting",t:"Cinematic"},{v:"fantasy concept art",t:"Fantasy Art"},{v:"sci-fi futuristic",t:"Sci-fi"},{v:"minimalist",t:"Minimalist"},{v:"surrealist",t:"Surrealist"}]
+};
+
+function onPlatformChange() {
+  const sel = document.getElementById("platform").value;
+  const fmt = document.getElementById("format");
+  const fmts = FORMAT_MAP[uiLang][sel];
+  fmt.innerHTML = fmts.map(f => `<option value="${f.v}">${f.t} — ${f.d}</option>`).join("");
+}
+checkAuth();
+onPlatformChange();
+applyLang();
+
+function setGoal(el) {
+  document.querySelectorAll("#goalTags .tag").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+}
+function toggleTag(el) { el.classList.toggle("active"); }
+
+function getSelectedStyles() {
+  const tags = [...document.querySelectorAll(".tag-row:last-of-type .tag.active")].map(e => e.textContent);
+  const custom = document.getElementById("customStyle").value.trim();
+  if (custom) tags.push(custom);
+  return tags;
+}
+
+/* ─── Char count ─── */
+function updateCharCount() {
+  const input = document.getElementById("input");
+  const count = document.getElementById("charCount");
+  const len = input.value.length;
+  if (len === 0) { count.textContent = ""; return; }
+  count.textContent = len.toLocaleString();
+  count.classList.toggle("warn", len > 8000);
+}
+
+function md(text) {
+  return text
+    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>")
+    .replace(/^[-*] (.+)$/gm, "<li>$1</li>")
+    .replace(/((?:<li>.*<\/li>\n?)+)/g, "<ul>$1</ul>")
+    .replace(/\n{2,}/g, "</p><p>")
+    .replace(/\n/g, "<br>")
+    .replace(/^/, "<p>").replace(/$/, "</p>")
+    .replace(/<p><h([123])>/g, "<h$1>").replace(/<\/h([123])><\/p>/g, "</h$1>")
+    .replace(/<p><blockquote>/g, "<blockquote>").replace(/<\/blockquote><\/p>/g, "</blockquote>")
+    .replace(/<p><ul>/g, "<ul>").replace(/<\/ul><\/p>/g, "</ul>")
+    .replace(/<p><\/p>/g, "");
+}
+
+let rawText = "";
+
+function addCopyBtn() {
+  const wrap = document.querySelector(".output-text-wrap");
+  let btn = wrap.querySelector(".btn-copy");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.className = "btn-copy";
+    wrap.appendChild(btn);
+  }
+  btn.textContent = t("copy");
+  btn.onclick = () => {
+    navigator.clipboard.writeText(rawText);
+    btn.textContent = t("copied");
+    setTimeout(() => btn.textContent = t("copy"), 1500);
+  };
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    input: document.getElementById("input").value,
+    raw: rawText,
+  }));
+}
+
+(function restore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!s) return;
+    if (s.input) {
+      document.getElementById("input").value = s.input;
+      updateCharCount();
+    }
+    if (s.raw) {
+      rawText = s.raw;
+      document.getElementById("output").innerHTML = md(rawText);
+      document.getElementById("outputCard").classList.add("visible");
+      addCopyBtn();
+    }
+  } catch(e) {}
+})();
+
+async function saveToHistory(payload) {
+  try {
+    const r = await fetch(BACKEND + "/api/save-history", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        platform: payload.platform,
+        format: payload.format,
+        goal: payload.goal,
+        styles: payload.styles,
+        input_text: payload.text,
+        output_text: rawText,
+      }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      currentHistoryId = d.id;
+    }
+  } catch(e) { console.error("save history failed:", e); }
+}
+
+async function submitRewrite() {
+  const input = document.getElementById("input");
+  const output = document.getElementById("output");
+  const card = document.getElementById("outputCard");
+  const status = document.getElementById("status");
+  const btn = document.getElementById("btnSubmit");
+  const text = input.value.trim();
+  if (!text) return;
+
+  const detectedLang = detectInputLang(text);
+  const langInd = document.getElementById("langIndicator");
+  langInd.classList.toggle("visible", detectedLang === "en");
+  const payload = {
+    text,
+    platform: document.getElementById("platform").value,
+    format: document.getElementById("format").value,
+    goal: document.querySelector("#goalTags .tag.active").dataset.val,
+    styles: getSelectedStyles(),
+    lang: detectedLang,
+  };
+
+  btn.disabled = true;
+  btn.textContent = "改写中...";
+  rawText = "";
+  currentHistoryId = null;
+  output.innerHTML = "";
+  card.classList.add("visible");
+  document.getElementById("imgPlaceholder").style.display = "";
+  document.getElementById("outputImg").classList.remove("visible");
+  document.getElementById("imgPrompt").value = "";
+  document.getElementById("btnGenImg").disabled = true;
+  status.textContent = t("calling");
+  status.className = "status running";
+
+  try {
+    const res = await fetch(BACKEND + "/api/rewrite", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const p = line.slice(6);
+        if (p === "[DONE]") {
+          output.innerHTML = md(rawText);
+          status.textContent = t("done"); status.className = "status";
+          btn.disabled = false; btn.textContent = t("submit");
+          addCopyBtn(); save();
+          saveToHistory(payload);
+          return;
+        }
+        try {
+          const d = JSON.parse(p);
+          if (d.error) rawText += "\n[错误] " + d.error;
+          else if (d.text) rawText += d.text;
+          output.innerHTML = md(rawText);
+        } catch(e) {}
+      }
+    }
+  } catch(e) {
+    output.innerHTML = "<p>连接后端失败: " + escapeHtml(e.message) + "</p>";
+    status.textContent = ""; status.className = "status";
+  }
+  btn.disabled = false; btn.textContent = t("submit"); save();
+}
+
+function analyzeForImage() {
+  if (!rawText) return;
+  const btn = document.getElementById("btnAnalyze");
+  const promptBox = document.getElementById("imgPrompt");
+  btn.disabled = true;
+  btn.textContent = "分析中...";
+
+  fetch(BACKEND + "/api/analyze-image", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ text: rawText }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      alert("分析失败: " + data.error);
+    } else {
+      promptBox.value = data.prompt;
+      document.getElementById("btnGenImg").disabled = false;
+    }
+  })
+  .catch(e => alert("连接失败: " + e.message))
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = "生成提示词";
+  });
+}
+
+function genImage() {
+  const btn = document.getElementById("btnGenImg");
+  const img = document.getElementById("outputImg");
+  const placeholder = document.getElementById("imgPlaceholder");
+  const prompt = document.getElementById("imgPrompt").value.trim();
+  if (!prompt) return;
+
+  btn.disabled = true;
+  btn.textContent = "生成中...";
+
+  fetch(BACKEND + "/api/gen-image", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ prompt }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      alert("生成失败: " + data.error);
+    } else {
+      const imgUrl = BACKEND + data.url + "?token=" + encodeURIComponent(authToken);
+      img.src = imgUrl;
+      img.classList.add("visible");
+      placeholder.style.display = "none";
+      const rwDl = document.getElementById("rewriteDownload");
+      rwDl.href = imgUrl;
+      rwDl.style.display = "block";
+      // Update history with image
+      if (currentHistoryId) {
+        fetch(BACKEND + "/api/update-history-image", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ id: currentHistoryId, image_url: data.url }),
+        }).catch(() => {});
+      }
+    }
+  })
+  .catch(e => alert("连接失败: " + e.message))
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = "生成配图";
+  });
+}
+
+/* ─── History ─── */
+let historyOffset = 0;
+let historyItems = [];
+
+function openHistory() {
+  document.getElementById("historyOverlay").classList.add("visible");
+  document.getElementById("historyPanel").classList.add("visible");
+  historyOffset = 0;
+  historyItems = [];
+  loadHistory(true);
+}
+
+function closeHistory() {
+  document.getElementById("historyOverlay").classList.remove("visible");
+  document.getElementById("historyPanel").classList.remove("visible");
+}
+
+async function loadHistory(reset) {
+  if (reset) {
+    historyOffset = 0;
+    historyItems = [];
+  }
+  try {
+    const r = await fetch(BACKEND + `/api/history?limit=20&offset=${historyOffset}`, {
+      headers: authHeaders(),
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    historyItems = historyItems.concat(d.items);
+    historyOffset += d.items.length;
+    renderHistory(d.items.length >= 20);
+  } catch(e) { console.error("load history failed:", e); }
+}
+
+function renderHistory(hasMore) {
+  const list = document.getElementById("historyList");
+  const countEl = document.getElementById("historyCount");
+  if (historyItems.length === 0) {
+    list.innerHTML = `<div class="history-empty">${escapeHtml(t("noHistory"))}</div>`;
+    countEl.textContent = "";
+    return;
+  }
+  countEl.textContent = `(${historyItems.length}${uiLang === "zh" ? "条" : ""})`;
+  let html = "";
+  for (const item of historyItems) {
+    const date = new Date(item.created_at * 1000);
+    const dateStr = date.toLocaleDateString(uiLang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const pName = item.platform === "image" ? t("genTag") : ((PLATFORM_NAMES[uiLang] || PLATFORM_NAMES.zh)[item.platform] || item.platform);
+    const fNames = uiLang === "en" ? FORMAT_NAMES_EN : FORMAT_NAMES;
+    const fName = item.platform === "image" ? item.format : (fNames[item.format] || item.format);
+    const preview = (item.output_text || "").slice(0, 120).replace(/[#*>\n]/g, " ").trim();
+    const hasImg = item.image_url ? true : false;
+    const safeId = parseInt(item.id, 10);
+    html += `<div class="history-item" onclick="viewHistory(${safeId})">
+      <div class="history-item-head">
+        <div class="history-item-tags">
+          <span class="history-item-tag">${escapeHtml(pName)}</span>
+          <span class="history-item-tag">${escapeHtml(fName)}</span>
+        </div>
+        <span class="history-item-date">${escapeHtml(dateStr)}</span>
+      </div>
+      <div class="history-item-row">
+        ${hasImg ? `<img class="history-item-thumb" src="${BACKEND}${encodeURI(item.image_url)}?token=${encodeURIComponent(authToken)}" />` : ""}
+        <div class="history-item-preview">${escapeHtml(preview) || escapeHtml(uiLang === "zh" ? "（无内容）" : "(empty)")}</div>
+      </div>
+    </div>`;
+  }
+  if (hasMore) {
+    html += `<div class="history-load-more"><button class="btn-load-more" onclick="loadHistory(false)">${escapeHtml(t("loadMore"))}</button></div>`;
+  }
+  list.innerHTML = html;
+}
+
+function viewHistory(id) {
+  const item = historyItems.find(h => h.id === id);
+  if (!item) return;
+  closeHistory();
+  // Fill input
+  document.getElementById("input").value = item.platform === "image" ? "" : (item.input_text || "");
+  updateCharCount();
+  // If it's a standalone image entry, fill solo prompt
+  if (item.platform === "image") {
+    document.getElementById("soloImgPrompt").value = item.input_text || "";
+    if (item.format) document.getElementById("soloAspect").value = item.format;
+  }
+  // Set platform & format
+  const platformSel = document.getElementById("platform");
+  if (item.platform) { platformSel.value = item.platform; onPlatformChange(); }
+  if (item.format) { document.getElementById("format").value = item.format; }
+  // Set goal
+  if (item.goal) {
+    document.querySelectorAll("#goalTags .tag").forEach(t => {
+      t.classList.toggle("active", t.dataset.val === item.goal);
+    });
+  }
+  // Set styles
+  let styles = [];
+  try { styles = JSON.parse(item.styles || "[]"); } catch(e) {}
+  document.querySelectorAll(".tag-row:last-of-type .tag").forEach(t => {
+    t.classList.toggle("active", styles.includes(t.textContent));
+  });
+  // Show output
+  rawText = item.output_text || "";
+  currentHistoryId = item.id;
+  const output = document.getElementById("output");
+  const card = document.getElementById("outputCard");
+  output.innerHTML = md(rawText);
+  card.classList.add("visible");
+  addCopyBtn();
+  // Show image if exists
+  const img = document.getElementById("outputImg");
+  const placeholder = document.getElementById("imgPlaceholder");
+  const rwDl = document.getElementById("rewriteDownload");
+  if (item.image_url) {
+    const imgUrl = BACKEND + item.image_url + "?token=" + encodeURIComponent(authToken);
+    img.src = imgUrl;
+    img.classList.add("visible");
+    placeholder.style.display = "none";
+    rwDl.href = imgUrl;
+    rwDl.style.display = "block";
+  } else {
+    img.classList.remove("visible");
+    placeholder.style.display = "";
+    rwDl.style.display = "none";
+  }
+  document.getElementById("imgPrompt").value = "";
+  document.getElementById("btnGenImg").disabled = true;
+  save();
+}
+
+/* ─── Password Modal ─── */
+function openChangePw() {
+  document.getElementById("pwOverlay").classList.add("visible");
+  document.getElementById("pwOld").value = "";
+  document.getElementById("pwNew").value = "";
+  document.getElementById("pwConfirm").value = "";
+  document.getElementById("pwMsg").textContent = "";
+  document.getElementById("pwMsg").className = "pw-msg";
+}
+
+function closePwModal() {
+  document.getElementById("pwOverlay").classList.remove("visible");
+}
+
+async function submitChangePw() {
+  const oldPw = document.getElementById("pwOld").value;
+  const newPw = document.getElementById("pwNew").value;
+  const confirmPw = document.getElementById("pwConfirm").value;
+  const msg = document.getElementById("pwMsg");
+  if (!oldPw || !newPw) { msg.textContent = "请填写所有字段"; msg.className = "pw-msg err"; return; }
+  if (newPw.length < 6) { msg.textContent = "新密码至少6位"; msg.className = "pw-msg err"; return; }
+  if (newPw !== confirmPw) { msg.textContent = "两次输入不一致"; msg.className = "pw-msg err"; return; }
+  try {
+    const r = await fetch(BACKEND + "/api/change-password", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ old_password: oldPw, new_password: newPw }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      msg.textContent = "密码已修改"; msg.className = "pw-msg ok";
+      setTimeout(closePwModal, 1200);
+    } else {
+      msg.textContent = d.error === "wrong old password" ? "当前密码错误" : d.error;
+      msg.className = "pw-msg err";
+    }
+  } catch(e) { msg.textContent = "连接失败"; msg.className = "pw-msg err"; }
+}
+
+/* ─── Create User Modal ─── */
+function openCreateUser() {
+  document.getElementById("cuOverlay").classList.add("visible");
+  document.getElementById("cuUser").value = "";
+  document.getElementById("cuPass").value = "";
+  document.getElementById("cuLabel").value = "";
+  document.getElementById("cuMsg").textContent = "";
+  document.getElementById("cuMsg").className = "cu-msg";
+}
+
+function closeCuModal() {
+  document.getElementById("cuOverlay").classList.remove("visible");
+}
+
+async function submitCreateUser() {
+  const username = document.getElementById("cuUser").value.trim();
+  const password = document.getElementById("cuPass").value;
+  const label = document.getElementById("cuLabel").value;
+  const msg = document.getElementById("cuMsg");
+  if (!username || username.length < 2) { msg.textContent = "用户名至少2位"; msg.className = "cu-msg err"; return; }
+  if (!password || password.length < 6) { msg.textContent = "密码至少6位"; msg.className = "cu-msg err"; return; }
+  try {
+    const r = await fetch(BACKEND + "/api/create-user", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ username, password, label }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      const desc = d.label ? d.label : "普通";
+      msg.textContent = "已创建用户 " + d.user + "（" + desc + "）";
+      msg.className = "cu-msg ok";
+    } else {
+      const errMap = { "user already exists": "用户名已存在", "no permission": "无权限", "username too short": "用户名太短", "password too short (min 6)": "密码太短" };
+      msg.textContent = errMap[d.error] || d.error;
+      msg.className = "cu-msg err";
+    }
+  } catch(e) { msg.textContent = "连接失败"; msg.className = "cu-msg err"; }
+}
+
+/* ─── Solo Image Gen ─── */
+function soloGenImage() {
+  const btn = document.getElementById("btnSoloGen");
+  const img = document.getElementById("soloImg");
+  const placeholder = document.getElementById("soloPlaceholder");
+  const dl = document.getElementById("soloDownload");
+  const rawPrompt = document.getElementById("soloImgPrompt").value.trim();
+  const aspect = document.getElementById("soloAspect").value;
+  const style = document.getElementById("soloStyle").value;
+  if (!rawPrompt) return;
+  const prompt = style ? `${rawPrompt}, ${style} style` : rawPrompt;
+
+  btn.disabled = true;
+  btn.textContent = "生成中...";
+
+  fetch(BACKEND + "/api/gen-image", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ prompt, aspect_ratio: aspect, save_history: true }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      alert("生成失败: " + data.error);
+    } else {
+      const url = BACKEND + data.url + "?token=" + encodeURIComponent(authToken);
+      img.src = url;
+      img.style.display = "block";
+      placeholder.style.display = "none";
+      dl.href = url;
+      dl.style.display = "block";
+    }
+  })
+  .catch(e => alert("连接失败: " + e.message))
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = "生成图片";
+  });
+}
+
+/* ─── Clear All ─── */
+function clearAll() {
+  document.getElementById("input").value = "";
+  document.getElementById("output").innerHTML = "";
+  rawText = "";
+  currentHistoryId = null;
+  document.getElementById("outputCard").classList.remove("visible");
+  document.getElementById("status").textContent = "";
+  document.getElementById("customStyle").value = "";
+  document.getElementById("imgPrompt").value = "";
+  document.getElementById("btnGenImg").disabled = true;
+  document.getElementById("imgPlaceholder").style.display = "";
+  document.getElementById("outputImg").classList.remove("visible");
+  updateCharCount();
+  document.querySelectorAll(".tag.active").forEach(e => {
+    if (!e.closest("#goalTags") || e.dataset.val !== "share") e.classList.remove("active");
+  });
+  document.querySelector("#goalTags .tag[data-val='share']").classList.add("active");
+  localStorage.removeItem(STORAGE_KEY);
+}
+</script>
+</body>
+</html>

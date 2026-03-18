@@ -1,6 +1,4 @@
-.env
-.env.bak
 __pycache__/
 *.pyc
-*.db
+history.db
 *.log
