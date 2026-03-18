@@ -19,24 +19,30 @@ from urllib.parse import parse_qs, urlparse
 
 MAX_BODY = 2 * 1024 * 1024  # 2MB request body limit
 REWRITE_TIMEOUT = 180  # 3 min timeout for claude rewrite
+RATE_LIMIT_SECONDS = 5  # Min interval between expensive API calls per user
+
+# Simple per-user rate limiter: username -> last_request_time
+import threading
+_rate_lock = threading.Lock()
+_rate_limits: dict[str, float] = {}
 
 PORT = 3200
 CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
 WORK_DIR = os.path.dirname(os.path.abspath(__file__))
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyA67P-IGUy-hw21eBVRoMNjLZcC31zCCv8")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-2.5-flash-image"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 IMAGE_DIR = os.path.expanduser("~/thought-evolution-images")
 DB_PATH = os.path.join(os.path.dirname(__file__), "history.db")
 os.makedirs(IMAGE_DIR, exist_ok=True)
 
-USERS = {
-    "gerald": "a58b058ded39b3ea53a625cb8b22e9d2947692ee4cb201d01977131978d82dcd",
-    "effy": "e1d076bd1a793065c0a81c94c7218670498736b9af57aa264abdf68b1a9c6fe2",
-}
-USER_TIERS = {
-    "gerald": {"tier": "pro", "label": "PRO,内测", "history_limit": 100},
-    "effy": {"tier": "pro", "label": "内测", "history_limit": 100},
+# Seed users — only used on first run when DB is empty.
+# Hashes are for initial passwords; users should change them after first login.
+_SEED_USERS = {
+    "gerald": {"hash": "a58b058ded39b3ea53a625cb8b22e9d2947692ee4cb201d01977131978d82dcd",
+               "tier": "pro", "label": "PRO,内测"},
+    "effy": {"hash": "e1d076bd1a793065c0a81c94c7218670498736b9af57aa264abdf68b1a9c6fe2",
+             "tier": "pro", "label": "内测"},
 }
 DEFAULT_TIER = {"tier": "free", "label": "", "history_limit": 3}
 SESSION_MAX_AGE = 7 * 24 * 3600
@@ -119,13 +125,10 @@ def init_db():
         conn.execute("ALTER TABLE users ADD COLUMN label TEXT NOT NULL DEFAULT ''")
     except Exception:
         pass
-    # Seed default users if not exist, update tier/label for existing ones
-    for u, h in USERS.items():
-        t = USER_TIERS.get(u, DEFAULT_TIER)
+    # Seed default users on first run only
+    for u, info in _SEED_USERS.items():
         conn.execute("INSERT OR IGNORE INTO users (username, pw_hash, tier, label) VALUES (?,?,?,?)",
-                     (u, h, t["tier"], t["label"]))
-        conn.execute("UPDATE users SET tier=?, label=? WHERE username=?",
-                     (t["tier"], t["label"], u))
+                     (u, info["hash"], info["tier"], info["label"]))
     conn.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             token TEXT PRIMARY KEY,
@@ -148,7 +151,9 @@ def get_user_hash(username):
 def hash_password(password, salt=""):
     if not salt:
         salt = secrets.token_hex(16)
-    return hashlib.sha256((salt + password).encode()).hexdigest(), salt
+    # PBKDF2 with 260k iterations (OWASP 2023 recommendation for SHA256)
+    h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260_000)
+    return h.hex(), salt
 
 def get_user_tier(username):
     with closing(get_db()) as conn:
@@ -183,6 +188,12 @@ def get_session(token):
 def delete_session(token):
     with closing(get_db()) as conn:
         conn.execute("DELETE FROM sessions WHERE token=?", (token,))
+        conn.commit()
+
+def delete_user_sessions(username):
+    """Invalidate all sessions for a user (e.g. after password change)."""
+    with closing(get_db()) as conn:
+        conn.execute("DELETE FROM sessions WHERE username=?", (username,))
         conn.commit()
 
 def create_user(username, pw_hash, salt, tier, label):
@@ -368,6 +379,18 @@ class Handler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _check_rate_limit(self):
+        """Returns True if allowed, False if rate-limited."""
+        key = self._get_user() or self.client_address[0]
+        now = time.time()
+        with _rate_lock:
+            last = _rate_limits.get(key, 0)
+            if now - last < RATE_LIMIT_SECONDS:
+                self._json_error(429, "too fast, please wait")
+                return False
+            _rate_limits[key] = now
+        return True
+
     def do_OPTIONS(self):
         self.send_response(204)
         self._cors()
@@ -397,7 +420,6 @@ class Handler(BaseHTTPRequestHandler):
             self._json_ok({"items": rows})
             return
         if path.startswith("/images/"):
-            if not self._require_auth(): return
             filename = os.path.basename(path.split("/images/", 1)[1])
             filepath = os.path.join(IMAGE_DIR, filename)
             if not os.path.realpath(filepath).startswith(os.path.realpath(IMAGE_DIR)):
@@ -415,14 +437,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/api/login": return self._handle_login()
         if self.path == "/api/logout": return self._handle_logout()
+        # Public endpoints — no auth required
+        if self.path == "/api/rewrite": return self._handle_rewrite()
+        if self.path == "/api/analyze-image": return self._handle_analyze_image()
+        if self.path == "/api/gen-image": return self._handle_gen_image()
+        # Auth-required endpoints
         if not self._require_auth(): return
         if self.path == "/api/change-password": return self._handle_change_password()
         if self.path == "/api/create-user": return self._handle_create_user()
-        if self.path == "/api/rewrite": return self._handle_rewrite()
         if self.path == "/api/save-history": return self._handle_save_history()
         if self.path == "/api/update-history-image": return self._handle_update_history_image()
-        if self.path == "/api/analyze-image": return self._handle_analyze_image()
-        if self.path == "/api/gen-image": return self._handle_gen_image()
         self.send_response(404); self.end_headers()
 
     def _read_json(self):
@@ -486,6 +510,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json_error(403, "wrong old password"); return
         new_hash, new_salt = hash_password(new_pw)
         set_user_hash(user, new_hash, new_salt)
+        delete_user_sessions(user)
         self._json_ok({"ok": True})
 
     def _handle_create_user(self):
@@ -514,6 +539,7 @@ class Handler(BaseHTTPRequestHandler):
         self._json_ok({"ok": True, "user": new_user, "tier": new_tier, "label": new_label})
 
     def _handle_rewrite(self):
+        if not self._check_rate_limit(): return
         try:
             data = self._read_json()
             article = data.get("text", "").strip()
@@ -623,6 +649,7 @@ class Handler(BaseHTTPRequestHandler):
         self._json_ok({"prompt": img_prompt})
 
     def _handle_gen_image(self):
+        if not self._check_rate_limit(): return
         try:
             data = self._read_json()
             prompt = data.get("prompt", "").strip()

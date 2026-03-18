@@ -786,6 +786,14 @@ button { font-family: inherit; cursor: pointer; transition: all var(--transition
   to   { transform: translate(-6%, -5%) scale(1.08); }
 }
 
+.login-close {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; color: var(--text-dim);
+  font-size: 1.5rem; cursor: pointer; line-height: 1;
+  transition: color var(--transition);
+}
+.login-close:hover { color: var(--text); }
+
 .login-box {
   position: relative;
   z-index: 1;
@@ -1507,9 +1515,10 @@ button { font-family: inherit; cursor: pointer; transition: all var(--transition
 </div>
 
 <!-- ─── Login Overlay ─── -->
-<div class="login-overlay" id="loginOverlay">
+<div class="login-overlay" id="loginOverlay" onclick="if(!event.target.closest('.login-box'))showAnonymous()">
   <div class="login-bg"></div>
   <div class="login-box">
+    <button class="login-close" onclick="showAnonymous()" aria-label="关闭">&times;</button>
     <div class="logo"><span class="logo-dot"></span>思维进化</div>
     <div class="login-tagline">Thought Evolution — Gerald</div>
     <input type="text" id="loginUser" placeholder="用户名" autocomplete="username" />
@@ -1525,9 +1534,9 @@ button { font-family: inherit; cursor: pointer; transition: all var(--transition
   <span class="user-badge" id="userBadge" style="display:none"></span>
   <button class="btn-lang" id="btnLang" onclick="toggleLang()">EN</button>
   <button class="btn-history" onclick="openHistory()" id="btnHistory">历史</button>
-  <button class="btn-history" onclick="openChangePw()">密码</button>
+  <button class="btn-history" id="btnChangePw" onclick="openChangePw()">密码</button>
   <button class="btn-history" id="btnCreateUser" onclick="openCreateUser()" style="display:none">新建用户</button>
-  <button class="btn-logout" onclick="doLogout()">退出</button>
+  <button class="btn-logout" id="btnLogout" onclick="doLogout()">退出</button>
 </div>
 
 <!-- ─── Password Modal ─── -->
@@ -1759,15 +1768,42 @@ function authHeaders() {
   return { "Content-Type": "application/json", "Authorization": "Bearer " + authToken };
 }
 
+let isLoggedIn = false;
+
 async function checkAuth() {
-  if (!authToken) { showLogin(); return; }
+  if (!authToken) { showAnonymous(); return; }
   try {
     const r = await fetch(BACKEND + "/api/me", { headers: authHeaders() });
     if (r.ok) {
       const d = await r.json();
+      isLoggedIn = true;
       hideLogin(d.user, d.tier, d.label, d.can_create);
-    } else { showLogin(); }
-  } catch(e) { showLogin(); }
+    } else { showAnonymous(); }
+  } catch(e) { showAnonymous(); }
+}
+
+function showAnonymous() {
+  // Don't block UI — let anonymous users use the tool
+  document.getElementById("loginOverlay").classList.add("hidden");
+  document.getElementById("userBar").style.display = "flex";
+  document.getElementById("userDisplay").textContent = "游客";
+  document.querySelectorAll(".user-badge-dynamic").forEach(e => e.remove());
+  document.getElementById("userBadge").style.display = "none";
+  document.getElementById("btnCreateUser").style.display = "none";
+  document.getElementById("btnHistory").style.display = "none";
+  document.getElementById("btnChangePw").style.display = "none";
+  document.getElementById("btnLogout").style.display = "none";
+  // Show login button for guests
+  let loginBtn = document.getElementById("guestLoginBtn");
+  if (!loginBtn) {
+    loginBtn = document.createElement("button");
+    loginBtn.id = "guestLoginBtn";
+    loginBtn.className = "btn-outline";
+    loginBtn.textContent = "登录";
+    loginBtn.style.cssText = "margin-left:auto;padding:4px 14px;font-size:0.82rem;cursor:pointer;border:1px solid var(--border-hover);border-radius:var(--radius-sm);background:transparent;color:var(--text-dim);";
+    loginBtn.onclick = showLogin;
+    document.getElementById("userBar").appendChild(loginBtn);
+  }
 }
 
 function showLogin() {
@@ -1776,9 +1812,16 @@ function showLogin() {
 }
 
 function hideLogin(user, tier, label, canCreate) {
+  isLoggedIn = true;
   document.getElementById("loginOverlay").classList.add("hidden");
   document.getElementById("userBar").style.display = "flex";
   document.getElementById("userDisplay").textContent = user;
+  // Restore logged-in UI
+  document.getElementById("btnHistory").style.display = "";
+  document.getElementById("btnChangePw").style.display = "";
+  document.getElementById("btnLogout").style.display = "";
+  const guestBtn = document.getElementById("guestLoginBtn");
+  if (guestBtn) guestBtn.remove();
   // Remove old badges
   document.querySelectorAll(".user-badge-dynamic").forEach(e => e.remove());
   const anchor = document.getElementById("userBadge");
@@ -1823,8 +1866,9 @@ async function doLogin() {
 async function doLogout() {
   try { await fetch(BACKEND + "/api/logout", { method: "POST", headers: authHeaders() }); } catch(e) {}
   authToken = "";
+  isLoggedIn = false;
   localStorage.removeItem("te-token");
-  showLogin();
+  showAnonymous();
 }
 
 document.addEventListener("keydown", e => {
@@ -2078,13 +2122,15 @@ function updateCharCount() {
 }
 
 function md(text) {
+  // Escape HTML entities first to prevent XSS
+  text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   return text
     .replace(/^### (.+)$/gm, "<h3>$1</h3>")
     .replace(/^## (.+)$/gm, "<h2>$1</h2>")
     .replace(/^# (.+)$/gm, "<h1>$1</h1>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>")
+    .replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>")
     .replace(/^[-*] (.+)$/gm, "<li>$1</li>")
     .replace(/((?:<li>.*<\/li>\n?)+)/g, "<ul>$1</ul>")
     .replace(/\n{2,}/g, "</p><p>")
@@ -2139,6 +2185,7 @@ function save() {
 })();
 
 async function saveToHistory(payload) {
+  if (!isLoggedIn) return;
   try {
     const r = await fetch(BACKEND + "/api/save-history", {
       method: "POST",
@@ -2576,6 +2623,106 @@ function clearAll() {
   document.querySelector("#goalTags .tag[data-val='share']").classList.add("active");
   localStorage.removeItem(STORAGE_KEY);
 }
+</script>
+
+<!-- ─── Info Panel ─── -->
+<style>
+.info-footer {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 50; pointer-events: none;
+}
+.info-toggle {
+  pointer-events: auto;
+  position: absolute; bottom: 16px; right: 20px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-dim); font-size: 0.9rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.info-toggle:hover { background: var(--surface3); color: var(--text); border-color: var(--border-hover); }
+.info-panel {
+  pointer-events: auto;
+  position: absolute; bottom: 56px; right: 20px;
+  width: min(420px, calc(100vw - 40px));
+  max-height: 70vh; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px;
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(20px);
+  transform: translateY(10px); opacity: 0;
+  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  visibility: hidden;
+}
+.info-panel.visible { transform: translateY(0); opacity: 1; visibility: visible; }
+.info-panel h3 { font-size: 1rem; font-weight: 600; color: var(--accent); margin: 0 0 12px; }
+.info-panel h4 { font-size: 0.85rem; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+.info-panel h4:first-of-type { margin-top: 0; }
+.info-panel p, .info-panel li { font-size: 0.8rem; color: var(--text-dim); line-height: 1.6; margin: 0; }
+.info-panel ul { padding-left: 16px; margin: 4px 0 0; }
+.info-panel li { margin: 2px 0; }
+.info-panel .info-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 4px;
+  font-size: 0.72rem; font-weight: 600; vertical-align: middle;
+}
+.info-badge.guest { background: var(--surface3); color: var(--text-dim); }
+.info-badge.user { background: var(--accent2-dim); color: var(--accent2); }
+.info-badge.pro { background: var(--accent-dim); color: var(--accent); }
+.info-divider { height: 1px; background: var(--border); margin: 14px 0; }
+.info-panel .info-tag { color: var(--accent); font-weight: 500; }
+</style>
+
+<div class="info-footer">
+  <button class="info-toggle" onclick="toggleInfo()" id="infoToggle" title="关于">?</button>
+  <div class="info-panel" id="infoPanel">
+    <h3>思维进化 · Thought Evolution</h3>
+    <p><span class="info-tag">内测阶段</span> — 功能持续更新中，如遇问题请联系 Gerald</p>
+
+    <div class="info-divider"></div>
+
+    <h4>用户等级</h4>
+    <ul>
+      <li><span class="info-badge guest">游客</span> 无需注册，可直接使用改写和配图功能。关闭页面后记录不保留。</li>
+      <li><span class="info-badge user">注册用户</span> 登录后自动保存历史记录，可随时回顾和管理。</li>
+      <li><span class="info-badge pro">PRO</span> 更高的历史保存上限（100条），可创建新用户账户。</li>
+    </ul>
+
+    <div class="info-divider"></div>
+
+    <h4>功能说明</h4>
+    <ul>
+      <li>支持微信公众号、小红书、微博、X (Twitter) 四大平台</li>
+      <li>多种内容格式：群发、朋友圈、长文、笔记、推文等</li>
+      <li>五种发布目标：分享、涨粉、推广、科普、品牌塑造</li>
+      <li>可选多种写作风格标签，自由组合</li>
+      <li>AI 智能配图：根据文章内容自动生成配图提示词</li>
+    </ul>
+
+    <div class="info-divider"></div>
+
+    <h4>使用限制</h4>
+    <ul>
+      <li>单次改写请求间隔至少 5 秒</li>
+      <li>改写超时时间为 3 分钟</li>
+      <li>输入文本建议在 5000 字以内以获得最佳效果</li>
+      <li>配图生成依赖外部 AI 服务，偶尔可能不可用</li>
+    </ul>
+
+    <div class="info-divider"></div>
+    <p style="text-align:center;color:var(--text-muted);font-size:0.72rem;margin-top:4px;">Powered by Claude + Gemini</p>
+  </div>
+</div>
+
+<script>
+function toggleInfo() {
+  document.getElementById("infoPanel").classList.toggle("visible");
+}
+document.addEventListener("click", e => {
+  const panel = document.getElementById("infoPanel");
+  if (panel.classList.contains("visible") && !e.target.closest(".info-footer")) {
+    panel.classList.remove("visible");
+  }
+});
 </script>
 </body>
 </html>
