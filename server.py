@@ -19,12 +19,12 @@ from urllib.parse import parse_qs, urlparse
 
 MAX_BODY = 2 * 1024 * 1024  # 2MB request body limit
 REWRITE_TIMEOUT = 180  # 3 min timeout for claude rewrite
-RATE_LIMIT_SECONDS = 5  # Min interval between expensive API calls per user
+RATE_LIMIT_SECONDS = 60  # Min interval between expensive API calls per user
 
-# Simple per-user rate limiter: username -> last_request_time
+# Per-user, per-action rate limiter: (username, action) -> last_request_time
 import threading
 _rate_lock = threading.Lock()
-_rate_limits: dict[str, float] = {}
+_rate_limits: dict[tuple[str, str], float] = {}
 
 PORT = 3200
 CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
@@ -42,7 +42,7 @@ _SEED_USERS = {
     "gerald": {"hash": "a58b058ded39b3ea53a625cb8b22e9d2947692ee4cb201d01977131978d82dcd",
                "tier": "pro", "label": "PRO,内测"},
     "effy": {"hash": "e1d076bd1a793065c0a81c94c7218670498736b9af57aa264abdf68b1a9c6fe2",
-             "tier": "pro", "label": "内测"},
+             "tier": "free", "label": "内测"},
 }
 DEFAULT_TIER = {"tier": "free", "label": "", "history_limit": 3}
 SESSION_MAX_AGE = 7 * 24 * 3600
@@ -136,6 +136,14 @@ def init_db():
             created_at REAL NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_creates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            creator TEXT NOT NULL,
+            created_user TEXT NOT NULL,
+            created_at REAL NOT NULL
+        )
+    """)
     # Clean expired sessions on startup
     conn.execute("DELETE FROM sessions WHERE created_at < ?", (time.time() - SESSION_MAX_AGE,))
     conn.commit()
@@ -155,15 +163,41 @@ def hash_password(password, salt=""):
     h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260_000)
     return h.hex(), salt
 
+PRO_MONTHLY_CREATE_LIMIT = 3
+
 def get_user_tier(username):
     with closing(get_db()) as conn:
         row = conn.execute("SELECT tier, label FROM users WHERE username=?", (username,)).fetchone()
     if row:
-        hl = 100 if row[0] == "pro" else 3
+        hl = 100 if row[0] == "pro" or "内测" in row[1] else 3
         labels = [l.strip() for l in row[1].split(",") if l.strip()]
-        can_create = "PRO" in labels and "内测" in labels
-        return {"tier": row[0], "label": row[1], "labels": labels, "history_limit": hl, "can_create": can_create}
-    return {**DEFAULT_TIER, "labels": [], "can_create": False}
+        is_pro = row[0] == "pro"
+        is_beta = "内测" in labels
+        has_pro_label = "PRO" in labels
+        # PRO can create normal users (monthly quota); beta can create unlimited normal users;
+        # PRO+内测 labels (gerald) can create any tier and access admin
+        can_create = is_pro or is_beta
+        can_create_privileged = has_pro_label and is_beta
+        return {"tier": row[0], "label": row[1], "labels": labels, "history_limit": hl,
+                "can_create": can_create, "can_create_privileged": can_create_privileged}
+    return {**DEFAULT_TIER, "labels": [], "can_create": False, "can_create_privileged": False}
+
+def count_monthly_creates(username):
+    """Count how many users this creator has created in the current calendar month."""
+    import calendar
+    now = time.time()
+    t = time.localtime(now)
+    month_start = time.mktime((t.tm_year, t.tm_mon, 1, 0, 0, 0, 0, 0, -1))
+    with closing(get_db()) as conn:
+        row = conn.execute("SELECT COUNT(*) FROM user_creates WHERE creator=? AND created_at>=?",
+                           (username, month_start)).fetchone()
+    return row[0] if row else 0
+
+def log_user_create(creator, created_user):
+    with closing(get_db()) as conn:
+        conn.execute("INSERT INTO user_creates (creator, created_user, created_at) VALUES (?,?,?)",
+                     (creator, created_user, time.time()))
+        conn.commit()
 
 def set_user_hash(username, pw_hash, salt=""):
     with closing(get_db()) as conn:
@@ -249,6 +283,64 @@ def get_history(user, limit=20, offset=0):
             (user, limit, offset),
         ).fetchall()
     return [dict(r) for r in rows]
+
+def get_all_users():
+    with closing(get_db()) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT username, tier, label FROM users ORDER BY username").fetchall()
+    return [dict(r) for r in rows]
+
+def delete_user(username):
+    with closing(get_db()) as conn:
+        # Delete user's history images
+        rows = conn.execute("SELECT image_url FROM history WHERE user=?", (username,)).fetchall()
+        for row in rows:
+            if row[0]:
+                img_path = os.path.join(IMAGE_DIR, os.path.basename(row[0]))
+                try: os.remove(img_path)
+                except OSError: pass
+        conn.execute("DELETE FROM history WHERE user=?", (username,))
+        conn.execute("DELETE FROM sessions WHERE username=?", (username,))
+        conn.execute("DELETE FROM user_creates WHERE creator=? OR created_user=?", (username, username))
+        conn.execute("DELETE FROM users WHERE username=?", (username,))
+        conn.commit()
+
+def update_user(username, tier=None, label=None):
+    with closing(get_db()) as conn:
+        if tier is not None:
+            conn.execute("UPDATE users SET tier=? WHERE username=?", (tier, username))
+        if label is not None:
+            conn.execute("UPDATE users SET label=? WHERE username=?", (label, username))
+        conn.commit()
+
+def get_admin_stats():
+    with closing(get_db()) as conn:
+        total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        tier_counts = conn.execute("SELECT tier, COUNT(*) FROM users GROUP BY tier").fetchall()
+        total_history = conn.execute("SELECT COUNT(*) FROM history").fetchone()[0]
+        active_sessions = conn.execute("SELECT COUNT(*) FROM sessions WHERE created_at > ?",
+                                       (time.time() - SESSION_MAX_AGE,)).fetchone()[0]
+        # Monthly creates
+        t = time.localtime()
+        month_start = time.mktime((t.tm_year, t.tm_mon, 1, 0, 0, 0, 0, 0, -1))
+        monthly_creates = conn.execute(
+            "SELECT creator, created_user, created_at FROM user_creates WHERE created_at >= ? ORDER BY created_at DESC",
+            (month_start,)).fetchall()
+    return {
+        "total_users": total_users,
+        "tier_counts": {r[0]: r[1] for r in tier_counts},
+        "total_history": total_history,
+        "active_sessions": active_sessions,
+        "monthly_creates": [{"creator": r[0], "created_user": r[1], "created_at": r[2]} for r in monthly_creates],
+    }
+
+def clean_expired_sessions():
+    with closing(get_db()) as conn:
+        n = conn.execute("SELECT COUNT(*) FROM sessions WHERE created_at < ?",
+                         (time.time() - SESSION_MAX_AGE,)).fetchone()[0]
+        conn.execute("DELETE FROM sessions WHERE created_at < ?", (time.time() - SESSION_MAX_AGE,))
+        conn.commit()
+    return n
 
 init_db()
 
@@ -379,14 +471,30 @@ class Handler(BaseHTTPRequestHandler):
             return False
         return True
 
-    def _check_rate_limit(self):
-        """Returns True if allowed, False if rate-limited."""
-        key = self._get_user() or self.client_address[0]
+    def _require_admin(self):
+        user = self._get_user()
+        if not user:
+            self._json_error(401, "unauthorized"); return False
+        tier = get_user_tier(user)
+        if not tier.get("can_create_privileged"):
+            self._json_error(403, "admin only"); return False
+        return True
+
+    def _check_rate_limit(self, action="default"):
+        """Returns True if allowed, False if rate-limited. Each action has its own timer. Beta users bypass."""
+        user = self._get_user() or self.client_address[0]
+        # Beta users have no cooldown
+        if user:
+            tier = get_user_tier(user)
+            if "内测" in tier.get("labels", []):
+                return True
+        key = (user, action)
         now = time.time()
         with _rate_lock:
             last = _rate_limits.get(key, 0)
             if now - last < RATE_LIMIT_SECONDS:
-                self._json_error(429, "too fast, please wait")
+                remaining = int(RATE_LIMIT_SECONDS - (now - last))
+                self._json_error(429, f"please wait {remaining}s")
                 return False
             _rate_limits[key] = now
         return True
@@ -419,6 +527,45 @@ class Handler(BaseHTTPRequestHandler):
             rows = get_history(self._get_user(), limit, offset)
             self._json_ok({"items": rows})
             return
+        if path == "/admin":
+            # Serve admin page statically; auth checked client-side via API
+            admin_path = os.path.join(WORK_DIR, "admin.html")
+            if os.path.isfile(admin_path):
+                self.send_response(200); self._cors()
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                with open(admin_path, "rb") as f:
+                    self.wfile.write(f.read())
+            else:
+                self._json_error(404, "admin page not found")
+            return
+        if path == "/api/admin/users":
+            if not self._require_admin(): return
+            self._json_ok({"users": get_all_users()})
+            return
+        if path == "/api/admin/stats":
+            if not self._require_admin(): return
+            self._json_ok(get_admin_stats())
+            return
+        if path == "/api/admin/user-history":
+            if not self._require_admin(): return
+            qs = parse_qs(parsed.query)
+            target = qs.get("user", [""])[0]
+            if not target:
+                self._json_error(400, "user required"); return
+            limit = min(int(qs.get("limit", [100])[0]), 200)
+            rows = get_history(target, limit, 0)
+            self._json_ok({"user": target, "items": rows})
+            return
+        if path == "/api/admin/sessions":
+            if not self._require_admin(): return
+            with closing(get_db()) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute(
+                    "SELECT token, username, created_at FROM sessions WHERE created_at > ? ORDER BY created_at DESC",
+                    (time.time() - SESSION_MAX_AGE,)).fetchall()
+            self._json_ok({"sessions": [dict(r) for r in rows]})
+            return
         if path.startswith("/images/"):
             filename = os.path.basename(path.split("/images/", 1)[1])
             filepath = os.path.join(IMAGE_DIR, filename)
@@ -447,6 +594,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/create-user": return self._handle_create_user()
         if self.path == "/api/save-history": return self._handle_save_history()
         if self.path == "/api/update-history-image": return self._handle_update_history_image()
+        # Admin endpoints
+        if self.path.startswith("/api/admin/"):
+            if not self._require_admin(): return
+            if self.path == "/api/admin/delete-user": return self._handle_admin_delete_user()
+            if self.path == "/api/admin/update-user": return self._handle_admin_update_user()
+            if self.path == "/api/admin/reset-password": return self._handle_admin_reset_password()
+            if self.path == "/api/admin/clean-sessions": return self._handle_admin_clean_sessions()
         self.send_response(404); self.end_headers()
 
     def _read_json(self):
@@ -529,17 +683,28 @@ class Handler(BaseHTTPRequestHandler):
             self._json_error(400, "username too short"); return
         if not new_pw or len(new_pw) < 6:
             self._json_error(400, "password too short (min 6)"); return
-        if new_label not in ("", "PRO", "内测"):
+        # Only PRO+内测 (gerald) can assign privileged labels
+        is_privileged_target = new_label in ("PRO", "内测", "PRO,内测")
+        if is_privileged_target and not tier.get("can_create_privileged"):
+            self._json_error(403, "only admin can create PRO/内测 accounts"); return
+        if not is_privileged_target:
             new_label = ""
-        if get_user_hash(new_user):
+        # PRO users (non-beta) have monthly quota
+        is_beta = "内测" in tier.get("labels", [])
+        if not is_beta:
+            used = count_monthly_creates(user)
+            if used >= PRO_MONTHLY_CREATE_LIMIT:
+                self._json_error(429, f"monthly limit reached ({PRO_MONTHLY_CREATE_LIMIT}/month)"); return
+        if get_user_hash(new_user)[0]:
             self._json_error(409, "user already exists"); return
-        new_tier = "pro" if new_label else "free"
+        new_tier = "pro" if "PRO" in new_label else "free"
         pw_hash, salt = hash_password(new_pw)
         create_user(new_user, pw_hash, salt, new_tier, new_label)
+        log_user_create(user, new_user)
         self._json_ok({"ok": True, "user": new_user, "tier": new_tier, "label": new_label})
 
     def _handle_rewrite(self):
-        if not self._check_rate_limit(): return
+        if not self._check_rate_limit("rewrite"): return
         try:
             data = self._read_json()
             article = data.get("text", "").strip()
@@ -649,7 +814,7 @@ class Handler(BaseHTTPRequestHandler):
         self._json_ok({"prompt": img_prompt})
 
     def _handle_gen_image(self):
-        if not self._check_rate_limit(): return
+        if not self._check_rate_limit("gen-image"): return
         try:
             data = self._read_json()
             prompt = data.get("prompt", "").strip()
@@ -671,12 +836,57 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             self._json_error(500, str(e))
 
+    # ── Admin Handlers ──
+
+    def _handle_admin_delete_user(self):
+        data = self._read_json()
+        target = data.get("username", "").strip().lower()
+        if not target:
+            self._json_error(400, "username required"); return
+        me = self._get_user()
+        if target == me:
+            self._json_error(400, "cannot delete yourself"); return
+        if not get_user_hash(target)[0]:
+            self._json_error(404, "user not found"); return
+        delete_user(target)
+        self._json_ok({"ok": True, "deleted": target})
+
+    def _handle_admin_update_user(self):
+        data = self._read_json()
+        target = data.get("username", "").strip().lower()
+        if not target or not get_user_hash(target)[0]:
+            self._json_error(404, "user not found"); return
+        new_tier = data.get("tier")
+        new_label = data.get("label")
+        if new_tier and new_tier not in ("free", "pro"):
+            self._json_error(400, "tier must be free or pro"); return
+        update_user(target, tier=new_tier, label=new_label)
+        self._json_ok({"ok": True, "user": target, "tier": new_tier, "label": new_label})
+
+    def _handle_admin_reset_password(self):
+        data = self._read_json()
+        target = data.get("username", "").strip().lower()
+        new_pw = data.get("password", "")
+        if not target or not get_user_hash(target)[0]:
+            self._json_error(404, "user not found"); return
+        if not new_pw or len(new_pw) < 6:
+            self._json_error(400, "password too short (min 6)"); return
+        pw_hash, salt = hash_password(new_pw)
+        set_user_hash(target, pw_hash, salt)
+        delete_user_sessions(target)
+        self._json_ok({"ok": True, "user": target})
+
+    def _handle_admin_clean_sessions(self):
+        n = clean_expired_sessions()
+        self._json_ok({"ok": True, "cleaned": n})
+
     def log_message(self, format, *args):
         print(f"[{self.log_date_time_string()}] {format % args}")
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
+    allow_reuse_address = True
 
 if __name__ == "__main__":
     server = ThreadedHTTPServer(("0.0.0.0", PORT), Handler)

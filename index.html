@@ -39,6 +39,64 @@
   --font:          "Inter", "Noto Sans SC", system-ui, sans-serif;
 }
 
+/* ─── Light Theme ─── */
+[data-theme="light"] {
+  --bg:            #f5f5f0;
+  --bg-noise:      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+  --surface:       #ffffff;
+  --surface2:      #f8f8f6;
+  --surface3:      #f0efe8;
+  --border:        rgba(0,0,0,0.07);
+  --border-hover:  rgba(0,0,0,0.15);
+  --border-accent: rgba(124,58,237,0.30);
+  --text:          #1a1a2e;
+  --text-dim:      #5c5c78;
+  --text-muted:    #9999aa;
+  --accent:        #7c3aed;
+  --accent2:       #0284c7;
+  --accent-dim:    rgba(124,58,237,0.08);
+  --accent-glow:   rgba(124,58,237,0.06);
+  --accent2-dim:   rgba(2,132,199,0.08);
+  --success:       #16a34a;
+  --danger:        #dc2626;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.06);
+  --shadow:        0 4px 20px rgba(0,0,0,0.08);
+  --shadow-lg:     0 8px 40px rgba(0,0,0,0.10);
+}
+[data-theme="light"] .mesh-bg::before { opacity: 0.88; }
+[data-theme="light"] .mesh-orb-1 {
+  background: radial-gradient(circle, rgba(251,191,36,0.20) 0%, transparent 70%);
+}
+[data-theme="light"] .mesh-orb-2 {
+  background: radial-gradient(circle, rgba(56,189,248,0.16) 0%, transparent 70%);
+}
+[data-theme="light"] .mesh-orb-3 {
+  background: radial-gradient(circle, rgba(124,58,237,0.10) 0%, transparent 70%);
+}
+[data-theme="light"] .mesh-orb-4 {
+  background: radial-gradient(circle, rgba(251,146,60,0.12) 0%, transparent 70%);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.10); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.18); }
+[data-theme="light"] .login-box {
+  background: rgba(255,255,255,0.85);
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.12);
+}
+[data-theme="light"] .login-box input {
+  background: var(--surface2); border-color: var(--border); color: var(--text);
+}
+[data-theme="light"] .lightbox { background: rgba(255,255,255,0.92); }
+[data-theme="light"] .history-sidebar { background: var(--surface); }
+[data-theme="light"] .pw-box { background: var(--surface); border-color: var(--border); }
+[data-theme="light"] .user-bar {
+  background: rgba(245,245,240,0.8);
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+[data-theme="light"] .user-badge.pro { background: rgba(124,58,237,0.12); color: #6d28d9; }
+[data-theme="light"] .user-badge.beta { background: rgba(202,138,4,0.12); color: #92400e; }
+[data-theme="light"] .btn-submit { background: linear-gradient(135deg, #7c3aed, #6366f1); }
+
 /* ─── Reset & Base ─── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -62,6 +120,55 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+/* ─── Info Banner ─── */
+.info-banner {
+  position: relative; z-index: 5;
+  width: 100%;
+  max-width: min(90vw, 1160px);
+  display: flex; align-items: flex-start; gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-sm);
+}
+.info-banner-badge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 1px;
+}
+.info-banner-body { flex: 1; min-width: 0; }
+.info-banner-lead {
+  font-size: 0.82rem; color: var(--text-dim); line-height: 1.5; margin: 0 0 10px;
+}
+.info-banner-tiers {
+  display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px;
+}
+.info-tier {
+  font-size: 0.78rem; color: var(--text-dim); line-height: 1.6;
+  display: flex; align-items: center; gap: 8px;
+}
+.info-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 0.7rem; font-weight: 600; flex-shrink: 0;
+  line-height: 1.4;
+}
+.info-badge.guest { background: var(--surface3); color: var(--text-dim); }
+.info-badge.user { background: var(--accent2-dim); color: var(--accent2); }
+.info-badge.pro { background: var(--accent-dim); color: var(--accent); }
+.info-banner-note {
+  font-size: 0.72rem; color: var(--text-muted); line-height: 1.6; margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
 
 /* ─── Animated Mesh Background ─── */
 .mesh-bg {
@@ -137,7 +244,7 @@ body {
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #fff;
+  color: var(--text);
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -1532,10 +1639,12 @@ button { font-family: inherit; cursor: pointer; transition: all var(--transition
 <div class="user-bar" id="userBar" style="display:none">
   <span id="userDisplay"></span>
   <span class="user-badge" id="userBadge" style="display:none"></span>
+  <button class="btn-lang" id="btnTheme" onclick="toggleTheme()" title="切换主题"></button>
   <button class="btn-lang" id="btnLang" onclick="toggleLang()">EN</button>
   <button class="btn-history" onclick="openHistory()" id="btnHistory">历史</button>
   <button class="btn-history" id="btnChangePw" onclick="openChangePw()">密码</button>
   <button class="btn-history" id="btnCreateUser" onclick="openCreateUser()" style="display:none">新建用户</button>
+  <button class="btn-history" id="btnAdmin" onclick="window.open('/admin','_blank')" style="display:none">管理</button>
   <button class="btn-logout" id="btnLogout" onclick="doLogout()">退出</button>
 </div>
 
@@ -1587,6 +1696,20 @@ button { font-family: inherit; cursor: pointer; transition: all var(--transition
 <div class="header">
   <div class="logo"><span class="logo-dot"></span>思维进化</div>
   <p class="subtitle">粘贴语料，一键改写 &mdash; Gerald</p>
+</div>
+
+<!-- ─── Info Banner ─── -->
+<div class="info-banner">
+  <div class="info-banner-badge">内测</div>
+  <div class="info-banner-body">
+    <p class="info-banner-lead">功能持续更新中，如遇问题请联系 Gerald</p>
+    <div class="info-banner-tiers">
+      <span class="info-tier"><span class="info-badge guest">游客</span>无需注册，关闭页面后记录不保留</span>
+      <span class="info-tier"><span class="info-badge user">注册用户</span>自动保存历史记录</span>
+      <span class="info-tier"><span class="info-badge pro">PRO</span>100条历史上限，每月可创建 3 个普通账户</span>
+    </div>
+    <p class="info-banner-note">支持微信 / 小红书 / 微博 / X 四大平台 · AI 智能配图 · 单次改写间隔 60s · 输入建议 5000 字内</p>
+  </div>
 </div>
 
 <div class="container">
@@ -1738,6 +1861,32 @@ button { font-family: inherit; cursor: pointer; transition: all var(--transition
 </div>
 
 <script>
+/* ─── Theme ─── */
+function initTheme() {
+  const saved = localStorage.getItem("te-theme");
+  if (saved === "light") document.documentElement.setAttribute("data-theme", "light");
+  updateThemeBtn();
+}
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  if (isLight) {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.setItem("te-theme", "dark");
+  } else {
+    document.documentElement.setAttribute("data-theme", "light");
+    localStorage.setItem("te-theme", "light");
+  }
+  updateThemeBtn();
+}
+function updateThemeBtn() {
+  const btn = document.getElementById("btnTheme");
+  if (!btn) return;
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  btn.textContent = isLight ? "\u263E" : "\u2600";
+  btn.title = isLight ? "切换暗色" : "切换亮色";
+}
+initTheme();
+
 /* ─── Lightbox ─── */
 function openLightbox(src) {
   const lb = document.getElementById("lightbox");
@@ -1790,6 +1939,7 @@ function showAnonymous() {
   document.querySelectorAll(".user-badge-dynamic").forEach(e => e.remove());
   document.getElementById("userBadge").style.display = "none";
   document.getElementById("btnCreateUser").style.display = "none";
+  document.getElementById("btnAdmin").style.display = "none";
   document.getElementById("btnHistory").style.display = "none";
   document.getElementById("btnChangePw").style.display = "none";
   document.getElementById("btnLogout").style.display = "none";
@@ -1836,6 +1986,10 @@ function hideLogin(user, tier, label, canCreate) {
     });
   }
   document.getElementById("btnCreateUser").style.display = canCreate ? "" : "none";
+  // Show admin button for PRO+内测 users
+  const labels = label ? label.split(",").map(l => l.trim()) : [];
+  const isAdmin = tier === "pro" && labels.includes("内测");
+  document.getElementById("btnAdmin").style.display = isAdmin ? "" : "none";
 }
 
 async function doLogin() {
@@ -2625,104 +2779,5 @@ function clearAll() {
 }
 </script>
 
-<!-- ─── Info Panel ─── -->
-<style>
-.info-footer {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  z-index: 50; pointer-events: none;
-}
-.info-toggle {
-  pointer-events: auto;
-  position: absolute; bottom: 16px; right: 20px;
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--surface2); border: 1px solid var(--border);
-  color: var(--text-dim); font-size: 0.9rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all var(--transition);
-}
-.info-toggle:hover { background: var(--surface3); color: var(--text); border-color: var(--border-hover); }
-.info-panel {
-  pointer-events: auto;
-  position: absolute; bottom: 56px; right: 20px;
-  width: min(420px, calc(100vw - 40px));
-  max-height: 70vh; overflow-y: auto;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 24px;
-  box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(20px);
-  transform: translateY(10px); opacity: 0;
-  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
-  visibility: hidden;
-}
-.info-panel.visible { transform: translateY(0); opacity: 1; visibility: visible; }
-.info-panel h3 { font-size: 1rem; font-weight: 600; color: var(--accent); margin: 0 0 12px; }
-.info-panel h4 { font-size: 0.85rem; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
-.info-panel h4:first-of-type { margin-top: 0; }
-.info-panel p, .info-panel li { font-size: 0.8rem; color: var(--text-dim); line-height: 1.6; margin: 0; }
-.info-panel ul { padding-left: 16px; margin: 4px 0 0; }
-.info-panel li { margin: 2px 0; }
-.info-panel .info-badge {
-  display: inline-block; padding: 1px 7px; border-radius: 4px;
-  font-size: 0.72rem; font-weight: 600; vertical-align: middle;
-}
-.info-badge.guest { background: var(--surface3); color: var(--text-dim); }
-.info-badge.user { background: var(--accent2-dim); color: var(--accent2); }
-.info-badge.pro { background: var(--accent-dim); color: var(--accent); }
-.info-divider { height: 1px; background: var(--border); margin: 14px 0; }
-.info-panel .info-tag { color: var(--accent); font-weight: 500; }
-</style>
-
-<div class="info-footer">
-  <button class="info-toggle" onclick="toggleInfo()" id="infoToggle" title="关于">?</button>
-  <div class="info-panel" id="infoPanel">
-    <h3>思维进化 · Thought Evolution</h3>
-    <p><span class="info-tag">内测阶段</span> — 功能持续更新中，如遇问题请联系 Gerald</p>
-
-    <div class="info-divider"></div>
-
-    <h4>用户等级</h4>
-    <ul>
-      <li><span class="info-badge guest">游客</span> 无需注册，可直接使用改写和配图功能。关闭页面后记录不保留。</li>
-      <li><span class="info-badge user">注册用户</span> 登录后自动保存历史记录，可随时回顾和管理。</li>
-      <li><span class="info-badge pro">PRO</span> 更高的历史保存上限（100条），可创建新用户账户。</li>
-    </ul>
-
-    <div class="info-divider"></div>
-
-    <h4>功能说明</h4>
-    <ul>
-      <li>支持微信公众号、小红书、微博、X (Twitter) 四大平台</li>
-      <li>多种内容格式：群发、朋友圈、长文、笔记、推文等</li>
-      <li>五种发布目标：分享、涨粉、推广、科普、品牌塑造</li>
-      <li>可选多种写作风格标签，自由组合</li>
-      <li>AI 智能配图：根据文章内容自动生成配图提示词</li>
-    </ul>
-
-    <div class="info-divider"></div>
-
-    <h4>使用限制</h4>
-    <ul>
-      <li>单次改写请求间隔至少 5 秒</li>
-      <li>改写超时时间为 3 分钟</li>
-      <li>输入文本建议在 5000 字以内以获得最佳效果</li>
-      <li>配图生成依赖外部 AI 服务，偶尔可能不可用</li>
-    </ul>
-
-    <div class="info-divider"></div>
-    <p style="text-align:center;color:var(--text-muted);font-size:0.72rem;margin-top:4px;">Powered by Claude + Gemini</p>
-  </div>
-</div>
-
-<script>
-function toggleInfo() {
-  document.getElementById("infoPanel").classList.toggle("visible");
-}
-document.addEventListener("click", e => {
-  const panel = document.getElementById("infoPanel");
-  if (panel.classList.contains("visible") && !e.target.closest(".info-footer")) {
-    panel.classList.remove("visible");
-  }
-});
-</script>
 </body>
 </html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>思维进化 · 管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080810; --surface: #0f0f1a; --surface2: #141422; --surface3: #1a1a2e;
+  --border: rgba(255,255,255,0.06); --border-hover: rgba(255,255,255,0.14);
+  --text: #e8e8f0; --text-dim: #8888a8; --text-muted: #555570;
+  --accent: #a78bfa; --accent2: #38bdf8;
+  --accent-dim: rgba(167,139,250,0.10); --accent2-dim: rgba(56,189,248,0.10);
+  --success: #4ade80; --danger: #f87171;
+  --radius: 10px; --radius-lg: 16px;
+  --shadow: 0 4px 20px rgba(0,0,0,0.5);
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+  --font: "Inter", "Noto Sans SC", system-ui, sans-serif;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  min-height: 100vh; background: var(--bg); color: var(--text);
+  font-family: var(--font); padding: 40px 24px;
+  display: flex; flex-direction: column; align-items: center;
+}
+h1 { font-size: 1.4rem; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+.subtitle { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 32px; }
+.grid { width: 100%; max-width: 1000px; display: flex; flex-direction: column; gap: 20px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow);
+}
+.card-title {
+  font-size: 0.82rem; font-weight: 600; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+}
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; }
+.stat { text-align: center; }
+.stat-val { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th { text-align: left; color: var(--text-dim); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+tr:hover td { background: var(--surface2); }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 0.7rem; font-weight: 600;
+}
+.badge-free { background: var(--surface3); color: var(--text-dim); }
+.badge-pro { background: var(--accent-dim); color: var(--accent); }
+.badge-beta { background: var(--accent2-dim); color: var(--accent2); }
+
+.btn {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text-dim); cursor: pointer;
+  font-size: 0.75rem; transition: all var(--transition);
+}
+.btn:hover { background: var(--surface3); color: var(--text); border-color: var(--border-hover); }
+.btn-danger { border-color: rgba(248,113,113,0.3); color: var(--danger); }
+.btn-danger:hover { background: rgba(248,113,113,0.1); }
+.btn-accent { border-color: rgba(167,139,250,0.3); color: var(--accent); }
+.btn-accent:hover { background: var(--accent-dim); }
+.btn-row { display: flex; gap: 6px; }
+
+.modal-bg {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center;
+}
+.modal-bg.visible { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px; width: min(400px, 90vw);
+  box-shadow: var(--shadow);
+}
+.modal h3 { font-size: 0.95rem; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+.modal label { display: block; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 4px; margin-top: 12px; }
+.modal label:first-of-type { margin-top: 0; }
+.modal input, .modal select {
+  width: 100%; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text); font-size: 0.82rem; outline: none;
+}
+.modal input:focus, .modal select:focus { border-color: var(--accent); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+.empty { text-align: center; color: var(--text-muted); padding: 24px; font-size: 0.82rem; }
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  padding: 10px 20px; border-radius: 8px; font-size: 0.82rem;
+  background: var(--surface3); border: 1px solid var(--border); color: var(--text);
+  opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200;
+}
+.toast.visible { opacity: 1; }
+.back-link {
+  position: fixed; top: 16px; left: 20px;
+  color: var(--text-dim); text-decoration: none; font-size: 0.82rem;
+}
+.back-link:hover { color: var(--text); }
+.session-user { font-weight: 500; }
+.session-time { color: var(--text-dim); font-size: 0.75rem; }
+.user-link { color: var(--accent2); cursor: pointer; text-decoration: none; }
+.user-link:hover { text-decoration: underline; }
+.history-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 90vw);
+  background: var(--surface); border-left: 1px solid var(--border);
+  box-shadow: -8px 0 40px rgba(0,0,0,0.5); z-index: 80;
+  transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  display: flex; flex-direction: column;
+}
+.history-drawer.open { transform: translateX(0); }
+.drawer-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.drawer-header h3 { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+.drawer-close { background: none; border: none; color: var(--text-dim); font-size: 1.2rem; cursor: pointer; }
+.drawer-close:hover { color: var(--text); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.history-item {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 14px;
+  margin-bottom: 12px; background: var(--surface2);
+}
+.history-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; align-items: center; }
+.history-meta .badge { font-size: 0.65rem; }
+.history-time { font-size: 0.7rem; color: var(--text-muted); margin-left: auto; }
+.history-text { font-size: 0.78rem; color: var(--text-dim); line-height: 1.6; white-space: pre-wrap; }
+.history-toggle {
+  font-size: 0.72rem; color: var(--accent); cursor: pointer; margin-top: 6px;
+  background: none; border: none; padding: 0;
+}
+.history-toggle:hover { text-decoration: underline; }
+.history-section { margin-top: 8px; }
+.history-section-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+.history-img { max-width: 100%; border-radius: var(--radius); margin-top: 8px; }
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 79;
+  display: none;
+}
+.drawer-overlay.open { display: block; }
+</style>
+</head>
+<body>
+
+<a class="back-link" href="/" id="backLink">&larr; 返回</a>
+
+<h1>管理面板</h1>
+<p class="subtitle">仅限管理员访问</p>
+
+<div class="grid">
+  <!-- Stats -->
+  <div class="card">
+    <div class="card-title">数据概览</div>
+    <div class="stat-grid" id="statsGrid">
+      <div class="stat"><div class="stat-val" id="statUsers">-</div><div class="stat-label">用户总数</div></div>
+      <div class="stat"><div class="stat-val" id="statFree">-</div><div class="stat-label">普通用户</div></div>
+      <div class="stat"><div class="stat-val" id="statPro">-</div><div class="stat-label">PRO</div></div>
+      <div class="stat"><div class="stat-val" id="statHistory">-</div><div class="stat-label">历史记录</div></div>
+      <div class="stat"><div class="stat-val" id="statSessions">-</div><div class="stat-label">活跃会话</div></div>
+      <div class="stat"><div class="stat-val" id="statMonthly">-</div><div class="stat-label">本月创建</div></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Users -->
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        用户管理
+        <button class="btn btn-accent" onclick="showCreateUser()">+ 创建用户</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>用户名</th><th>等级</th><th>标签</th><th>操作</th></tr></thead>
+          <tbody id="userTable"><tr><td colspan="4" class="empty">加载中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sessions & Monthly Creates -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          在线会话
+          <button class="btn" onclick="cleanSessions()">清理过期</button>
+        </div>
+        <div id="sessionList"><p class="empty">加载中...</p></div>
+      </div>
+      <div class="card">
+        <div class="card-title">本月账户创建记录</div>
+        <div id="createLog"><p class="empty">加载中...</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-bg" id="modalCreate" onclick="if(event.target===this)this.classList.remove('visible')">
+  <div class="modal">
+    <h3>创建用户</h3>
+    <label>用户名</label>
+    <input id="newUsername" placeholder="至少2个字符">
+    <label>密码</label>
+    <input id="newPassword" type="password" placeholder="至少6个字符">
+    <label>等级</label>
+    <select id="newTier">
+      <option value="free">普通用户 (free)</option>
+      <option value="pro">PRO</option>
+    </select>
+    <label>标签</label>
+    <input id="newLabel" placeholder='可选，如 PRO,内测'>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modalCreate')">取消</button>
+      <button class="btn btn-accent" onclick="createUser()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-bg" id="modalEdit" onclick="if(event.target===this)this.classList.remove('visible')">
+  <div class="modal">
+    <h3>编辑用户 · <span id="editTarget"></span></h3>
+    <label>等级</label>
+    <select id="editTier">
+      <option value="free">普通用户 (free)</option>
+      <option value="pro">PRO</option>
+    </select>
+    <label>标签</label>
+    <input id="editLabel" placeholder='如 PRO,内测'>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modalEdit')">取消</button>
+      <button class="btn btn-accent" onclick="saveEditUser()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-bg" id="modalPw" onclick="if(event.target===this)this.classList.remove('visible')">
+  <div class="modal">
+    <h3>重置密码 · <span id="pwTarget"></span></h3>
+    <label>新密码</label>
+    <input id="resetPw" type="password" placeholder="至少6个字符">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modalPw')">取消</button>
+      <button class="btn btn-accent" onclick="resetPassword()">重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- History Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="history-drawer" id="historyDrawer">
+  <div class="drawer-header">
+    <h3><span id="drawerUser"></span> 的历史记录</h3>
+    <button class="drawer-close" onclick="closeDrawer()">&times;</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"><p class="empty">加载中...</p></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = window.location.origin;
+const token = localStorage.getItem("te-token") || "";
+const headers = {"Content-Type": "application/json", "Authorization": "Bearer " + token};
+
+// Back link preserves SPA context
+document.getElementById("backLink").href = "/";
+
+function toast(msg, ms = 2500) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("visible");
+  setTimeout(() => t.classList.remove("visible"), ms);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {headers, ...opts});
+  const data = await res.json();
+  if (!res.ok) { toast("Error: " + (data.error || res.status)); throw new Error(data.error); }
+  return data;
+}
+
+function fmtTime(ts) {
+  return new Date(ts * 1000).toLocaleString("zh-CN", {month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+}
+
+function tierBadge(tier) {
+  if (tier === "pro") return '<span class="badge badge-pro">PRO</span>';
+  return '<span class="badge badge-free">FREE</span>';
+}
+
+function labelBadges(label) {
+  if (!label) return '<span style="color:var(--text-muted)">-</span>';
+  return label.split(",").map(l => {
+    l = l.trim(); if (!l) return "";
+    if (l === "PRO") return '<span class="badge badge-pro">PRO</span>';
+    if (l === "内测") return '<span class="badge badge-beta">内测</span>';
+    return '<span class="badge badge-free">' + l + '</span>';
+  }).join(" ");
+}
+
+// ── Load Data ──
+
+async function loadStats() {
+  const s = await api("/api/admin/stats");
+  document.getElementById("statUsers").textContent = s.total_users;
+  document.getElementById("statFree").textContent = s.tier_counts.free || 0;
+  document.getElementById("statPro").textContent = s.tier_counts.pro || 0;
+  document.getElementById("statHistory").textContent = s.total_history;
+  document.getElementById("statSessions").textContent = s.active_sessions;
+  document.getElementById("statMonthly").textContent = s.monthly_creates.length;
+
+  // Monthly create log
+  const logEl = document.getElementById("createLog");
+  if (s.monthly_creates.length === 0) {
+    logEl.innerHTML = '<p class="empty">本月暂无创建记录</p>';
+  } else {
+    logEl.innerHTML = s.monthly_creates.map(r =>
+      `<div style="font-size:0.78rem;padding:4px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+        <span><b>${r.creator}</b> &rarr; ${r.created_user}</span>
+        <span style="color:var(--text-dim)">${fmtTime(r.created_at)}</span>
+      </div>`
+    ).join("");
+  }
+}
+
+async function loadUsers() {
+  const d = await api("/api/admin/users");
+  const tb = document.getElementById("userTable");
+  if (d.users.length === 0) { tb.innerHTML = '<tr><td colspan="4" class="empty">暂无用户</td></tr>'; return; }
+  tb.innerHTML = d.users.map(u => `<tr>
+    <td><a class="user-link" onclick="openHistory('${u.username}')">${u.username}</a></td>
+    <td>${tierBadge(u.tier)}</td>
+    <td>${labelBadges(u.label)}</td>
+    <td><div class="btn-row">
+      <button class="btn" onclick="showEditUser('${u.username}','${u.tier}','${u.label}')">编辑</button>
+      <button class="btn" onclick="showResetPw('${u.username}')">密码</button>
+      <button class="btn btn-danger" onclick="deleteUser('${u.username}')">删除</button>
+    </div></td>
+  </tr>`).join("");
+}
+
+async function loadSessions() {
+  const d = await api("/api/admin/sessions");
+  const el = document.getElementById("sessionList");
+  if (d.sessions.length === 0) { el.innerHTML = '<p class="empty">无活跃会话</p>'; return; }
+  el.innerHTML = d.sessions.map(s =>
+    `<div style="font-size:0.78rem;padding:4px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+      <span class="session-user">${s.username}</span>
+      <span class="session-time">${fmtTime(s.created_at)}</span>
+    </div>`
+  ).join("");
+}
+
+// ── Actions ──
+
+function showCreateUser() { document.getElementById("modalCreate").classList.add("visible"); }
+function closeModal(id) { document.getElementById(id).classList.remove("visible"); }
+
+async function createUser() {
+  const u = document.getElementById("newUsername").value.trim();
+  const p = document.getElementById("newPassword").value;
+  const t = document.getElementById("newTier").value;
+  const l = document.getElementById("newLabel").value.trim();
+  await api("/api/create-user", {method: "POST", body: JSON.stringify({username:u, password:p, label:l})});
+  // If tier needs adjusting beyond what label implies
+  if ((t === "pro" && !l.includes("PRO")) || (t === "free" && l.includes("PRO"))) {
+    await api("/api/admin/update-user", {method: "POST", body: JSON.stringify({username:u, tier:t, label:l})});
+  }
+  closeModal("modalCreate"); toast("用户已创建"); refresh();
+}
+
+function showEditUser(username, tier, label) {
+  document.getElementById("editTarget").textContent = username;
+  document.getElementById("editTier").value = tier;
+  document.getElementById("editLabel").value = label;
+  document.getElementById("modalEdit").classList.add("visible");
+  document.getElementById("modalEdit").dataset.user = username;
+}
+
+async function saveEditUser() {
+  const u = document.getElementById("modalEdit").dataset.user;
+  const t = document.getElementById("editTier").value;
+  const l = document.getElementById("editLabel").value.trim();
+  await api("/api/admin/update-user", {method: "POST", body: JSON.stringify({username:u, tier:t, label:l})});
+  closeModal("modalEdit"); toast("已更新"); refresh();
+}
+
+function showResetPw(username) {
+  document.getElementById("pwTarget").textContent = username;
+  document.getElementById("resetPw").value = "";
+  document.getElementById("modalPw").classList.add("visible");
+  document.getElementById("modalPw").dataset.user = username;
+}
+
+async function resetPassword() {
+  const u = document.getElementById("modalPw").dataset.user;
+  const p = document.getElementById("resetPw").value;
+  await api("/api/admin/reset-password", {method: "POST", body: JSON.stringify({username:u, password:p})});
+  closeModal("modalPw"); toast("密码已重置"); refresh();
+}
+
+async function deleteUser(username) {
+  if (!confirm(`确定删除用户 "${username}"？其历史记录也会被删除。`)) return;
+  await api("/api/admin/delete-user", {method: "POST", body: JSON.stringify({username})});
+  toast("已删除"); refresh();
+}
+
+async function cleanSessions() {
+  const d = await api("/api/admin/clean-sessions", {method: "POST"});
+  toast(`已清理 ${d.cleaned} 个过期会话`); refresh();
+}
+
+// ── History Drawer ──
+
+async function openHistory(username) {
+  document.getElementById("drawerUser").textContent = username;
+  document.getElementById("drawerBody").innerHTML = '<p class="empty">加载中...</p>';
+  document.getElementById("historyDrawer").classList.add("open");
+  document.getElementById("drawerOverlay").classList.add("open");
+  try {
+    const d = await api(`/api/admin/user-history?user=${encodeURIComponent(username)}`);
+    const body = document.getElementById("drawerBody");
+    if (d.items.length === 0) {
+      body.innerHTML = '<p class="empty">暂无历史记录</p>';
+      return;
+    }
+    body.innerHTML = d.items.map((item, i) => {
+      const platform = item.platform || "-";
+      const format = item.format || "-";
+      const goal = item.goal || "-";
+      const time = fmtTime(item.created_at);
+      const inputPreview = (item.input_text || "").slice(0, 120);
+      const outputPreview = (item.output_text || "").slice(0, 200);
+      const hasMore = (item.input_text || "").length > 120 || (item.output_text || "").length > 200;
+      const imgHtml = item.image_url
+        ? `<img class="history-img" src="/images/${item.image_url.split('/').pop()}" loading="lazy">`
+        : "";
+      return `<div class="history-item">
+        <div class="history-meta">
+          <span class="badge badge-pro">${platform}</span>
+          <span class="badge badge-beta">${format}</span>
+          <span class="badge badge-free">${goal}</span>
+          <span class="history-time">${time}</span>
+        </div>
+        <div class="history-section">
+          <div class="history-section-label">原文</div>
+          <div class="history-text" id="input-${i}">${escHtml(inputPreview)}${(item.input_text||"").length > 120 ? "..." : ""}</div>
+        </div>
+        <div class="history-section">
+          <div class="history-section-label">改写</div>
+          <div class="history-text" id="output-${i}">${escHtml(outputPreview)}${(item.output_text||"").length > 200 ? "..." : ""}</div>
+        </div>
+        ${hasMore ? `<button class="history-toggle" onclick="expandItem(this, ${i}, ${JSON.stringify(JSON.stringify(item.input_text||""))}, ${JSON.stringify(JSON.stringify(item.output_text||""))})">展开全文</button>` : ""}
+        ${imgHtml}
+      </div>`;
+    }).join("");
+  } catch(e) {
+    document.getElementById("drawerBody").innerHTML = '<p class="empty">加载失败</p>';
+  }
+}
+
+function closeDrawer() {
+  document.getElementById("historyDrawer").classList.remove("open");
+  document.getElementById("drawerOverlay").classList.remove("open");
+}
+
+function expandItem(btn, i, inputFull, outputFull) {
+  document.getElementById(`input-${i}`).textContent = JSON.parse(inputFull);
+  document.getElementById(`output-${i}`).textContent = JSON.parse(outputFull);
+  btn.remove();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function refresh() { loadStats(); loadUsers(); loadSessions(); }
+
+// ── Init ──
+(async () => {
+  if (!token) {
+    document.body.innerHTML = '<p style="text-align:center;color:var(--text-dim);margin-top:40vh">请先在主页登录后访问此页面</p>';
+    return;
+  }
+  try {
+    await api("/api/admin/stats");
+    refresh();
+  } catch {
+    document.body.innerHTML = '<p style="text-align:center;color:var(--text-dim);margin-top:40vh">无权访问管理面板</p>';
+  }
+})();
+</script>
+</body>
+</html>
