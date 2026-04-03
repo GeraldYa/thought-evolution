@@ -5,12 +5,12 @@ After=network.target
 [Service]
 Type=simple
 User=gerald
-WorkingDirectory=/home/gerald/.claude/workspace/telegram-bot/thought-evolution
-ExecStart=/usr/bin/python3 /home/gerald/.claude/workspace/telegram-bot/thought-evolution/server.py
+WorkingDirectory=/home/gerald/.claude/workspace/thought-evolution
+ExecStart=/usr/bin/python3 /home/gerald/.claude/workspace/thought-evolution/server.py
 Restart=always
 RestartSec=3
 Environment=PATH=/home/gerald/.local/bin:/usr/local/bin:/usr/bin:/bin
-EnvironmentFile=-/home/gerald/.claude/workspace/telegram-bot/thought-evolution/.env
+EnvironmentFile=-/home/gerald/.claude/workspace/thought-evolution/.env
 
 [Install]
 WantedBy=multi-user.target

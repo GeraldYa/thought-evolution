@@ -31,7 +31,7 @@ CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
 WORK_DIR = os.path.dirname(os.path.abspath(__file__))
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-2.5-flash-image"
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+GEMINI_URL = f"https://api.tokentrove.co/v1beta/models/{GEMINI_MODEL}:generateContent"
 IMAGE_DIR = os.path.expanduser("~/thought-evolution-images")
 DB_PATH = os.path.join(os.path.dirname(__file__), "history.db")
 os.makedirs(IMAGE_DIR, exist_ok=True)
@@ -417,7 +417,7 @@ def generate_image(prompt, aspect_ratio=None):
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         GEMINI_URL, data=body,
-        headers={"Content-Type": "application/json", "X-goog-api-key": GEMINI_API_KEY},
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {GEMINI_API_KEY}"},
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
@@ -438,6 +438,7 @@ def generate_image(prompt, aspect_ratio=None):
 # ── Handler ──
 
 class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", self.headers.get("Origin", "*"))
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -460,10 +461,12 @@ class Handler(BaseHTTPRequestHandler):
         return get_session(token)
 
     def _json_error(self, code, msg):
+        body = json.dumps({"error": msg}).encode()
         self.send_response(code); self._cors()
         self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(json.dumps({"error": msg}).encode())
+        self.wfile.write(body)
 
     def _require_auth(self):
         if not self._get_user():
@@ -531,11 +534,13 @@ class Handler(BaseHTTPRequestHandler):
             # Serve admin page statically; auth checked client-side via API
             admin_path = os.path.join(WORK_DIR, "admin.html")
             if os.path.isfile(admin_path):
+                with open(admin_path, "rb") as f:
+                    body = f.read()
                 self.send_response(200); self._cors()
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
-                with open(admin_path, "rb") as f:
-                    self.wfile.write(f.read())
+                self.wfile.write(body)
             else:
                 self._json_error(404, "admin page not found")
             return
@@ -572,14 +577,16 @@ class Handler(BaseHTTPRequestHandler):
             if not os.path.realpath(filepath).startswith(os.path.realpath(IMAGE_DIR)):
                 self.send_response(403); self.end_headers(); return
             if os.path.isfile(filepath):
+                with open(filepath, "rb") as f:
+                    body = f.read()
                 self.send_response(200); self._cors()
                 self.send_header("Content-Type", "image/png")
                 self.send_header("Cache-Control", "public, max-age=86400")
+                self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
-                with open(filepath, "rb") as f:
-                    self.wfile.write(f.read())
+                self.wfile.write(body)
                 return
-        self.send_response(404); self.end_headers()
+        self.send_response(404); self.send_header('Content-Length', '0'); self.end_headers()
 
     def do_POST(self):
         if self.path == "/api/login": return self._handle_login()
@@ -610,10 +617,12 @@ class Handler(BaseHTTPRequestHandler):
         return json.loads(self.rfile.read(length).decode("utf-8"))
 
     def _json_ok(self, obj):
+        body = json.dumps(obj, ensure_ascii=False).encode()
         self.send_response(200); self._cors()
         self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(json.dumps(obj, ensure_ascii=False).encode())
+        self.wfile.write(body)
 
     def _handle_login(self):
         try:
@@ -719,12 +728,32 @@ class Handler(BaseHTTPRequestHandler):
             self._json_error(400, "empty text"); return
 
         prompt = build_prompt(article, platform, fmt, goal, styles, lang)
-        # Send SSE headers immediately to keep connection alive during processing
         self.send_response(200); self._cors()
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
+
+        # Send initial event so proxies start forwarding immediately
+        self.wfile.write(b'data: {"status": "processing"}\n\n')
+        self.wfile.flush()
+
+        # Keepalive thread prevents proxy timeouts
+        write_lock = threading.Lock()
+        stop_event = threading.Event()
+        def keepalive():
+            while not stop_event.is_set():
+                stop_event.wait(3)
+                if stop_event.is_set():
+                    break
+                try:
+                    with write_lock:
+                        self.wfile.write(b'data: {"keepalive": true}\n\n')
+                        self.wfile.flush()
+                except Exception:
+                    break
+        ka_thread = threading.Thread(target=keepalive, daemon=True)
+        ka_thread.start()
 
         try:
             proc = subprocess.run(
@@ -733,22 +762,38 @@ class Handler(BaseHTTPRequestHandler):
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 cwd=WORK_DIR, timeout=REWRITE_TIMEOUT,
             )
+            stop_event.set()
+            ka_thread.join(2)
             if proc.returncode != 0:
                 err = proc.stderr.decode("utf-8", errors="replace")
                 sse_data = json.dumps({"error": err}, ensure_ascii=False)
-                self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
+                with write_lock:
+                    self.wfile.write(("data: " + sse_data + "\n\n").encode("utf-8"))
+                    self.wfile.flush()
             else:
                 result_text = proc.stdout.decode("utf-8", errors="replace").strip()
                 sse_data = json.dumps({"text": result_text}, ensure_ascii=False)
-                self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
+                with write_lock:
+                    self.wfile.write(("data: " + sse_data + "\n\n").encode("utf-8"))
+                    self.wfile.flush()
         except subprocess.TimeoutExpired:
+            stop_event.set()
+            ka_thread.join(2)
             sse_data = json.dumps({"error": "rewrite timed out"}, ensure_ascii=False)
-            self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
+            with write_lock:
+                self.wfile.write(("data: " + sse_data + "\n\n").encode("utf-8"))
+                self.wfile.flush()
         except Exception as e:
+            stop_event.set()
+            ka_thread.join(2)
             sse_data = json.dumps({"error": str(e)}, ensure_ascii=False)
-            self.wfile.write(f"data: {sse_data}\n\n".encode("utf-8"))
+            with write_lock:
+                self.wfile.write(("data: " + sse_data + "\n\n").encode("utf-8"))
+                self.wfile.flush()
 
-        self.wfile.write(b"data: [DONE]\n\n"); self.wfile.flush()
+        with write_lock:
+            self.wfile.write(b'data: [DONE]\n\n')
+            self.wfile.flush()
 
     def _handle_save_history(self):
         try:
@@ -830,8 +875,9 @@ class Handler(BaseHTTPRequestHandler):
             result = {"url": url}
             if save_hist:
                 user = self._get_user()
-                new_id = save_history(user, "image", aspect_ratio or "1:1", "", [], prompt, "", url)
-                result["history_id"] = new_id
+                if user:
+                    new_id = save_history(user, "image", aspect_ratio or "1:1", "", [], prompt, "", url)
+                    result["history_id"] = new_id
             self._json_ok(result)
         except Exception as e:
             self._json_error(500, str(e))

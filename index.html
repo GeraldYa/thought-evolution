@@ -1700,15 +1700,15 @@ button { font-family: inherit; cursor: pointer; transition: all var(--transition
 
 <!-- ─── Info Banner ─── -->
 <div class="info-banner">
-  <div class="info-banner-badge">内测</div>
+  <div class="info-banner-badge" id="infoBadge">内测</div>
   <div class="info-banner-body">
-    <p class="info-banner-lead">功能持续更新中，如遇问题请联系 Gerald</p>
+    <p class="info-banner-lead" id="infoLead">功能持续更新中，如遇问题请联系 Gerald</p>
     <div class="info-banner-tiers">
-      <span class="info-tier"><span class="info-badge guest">游客</span>无需注册，关闭页面后记录不保留</span>
-      <span class="info-tier"><span class="info-badge user">注册用户</span>自动保存历史记录</span>
-      <span class="info-tier"><span class="info-badge pro">PRO</span>100条历史上限，每月可创建 3 个普通账户</span>
+      <span class="info-tier"><span class="info-badge guest" id="infoGuest">游客</span><span id="infoGuestDesc">无需注册，关闭页面后记录不保留</span></span>
+      <span class="info-tier"><span class="info-badge user" id="infoUser">注册用户</span><span id="infoUserDesc">自动保存历史记录</span></span>
+      <span class="info-tier"><span class="info-badge pro">PRO</span><span id="infoProDesc">100条历史上限，每月可创建 3 个普通账户</span></span>
     </div>
-    <p class="info-banner-note">支持微信 / 小红书 / 微博 / X 四大平台 · AI 智能配图 · 单次改写间隔 60s · 输入建议 5000 字内</p>
+    <p class="info-banner-note" id="infoNote">支持微信 / 小红书 / 微博 / X 四大平台 · AI 智能配图 · 单次改写间隔 60s · 输入建议 5000 字内</p>
   </div>
 </div>
 
@@ -2066,6 +2066,11 @@ const I18N = {
     calling: "正在调用 Claude Code...", done: "完成",
     historyTitle: "历史记录", close: "关闭", loadMore: "加载更多",
     noHistory: "还没有历史记录", genTag: "生图",
+    infoBadge: "内测", infoLead: "功能持续更新中，如遇问题请联系 Gerald",
+    infoGuest: "游客", infoGuestDesc: "无需注册，关闭页面后记录不保留",
+    infoUser: "注册用户", infoUserDesc: "自动保存历史记录",
+    infoProDesc: "100条历史上限，每月可创建 3 个普通账户",
+    infoNote: "支持微信 / 小红书 / 微博 / X 四大平台 · AI 智能配图 · 单次改写间隔 60s · 输入建议 5000 字内",
   },
   en: {
     logo: "Thought Evolution",
@@ -2102,6 +2107,11 @@ const I18N = {
     calling: "Calling Claude Code...", done: "Done",
     historyTitle: "History", close: "Close", loadMore: "Load More",
     noHistory: "No history yet", genTag: "Image",
+    infoBadge: "BETA", infoLead: "Features in progress — contact Gerald for issues",
+    infoGuest: "Guest", infoGuestDesc: "No signup needed, records cleared on close",
+    infoUser: "Registered", infoUserDesc: "History saved automatically",
+    infoProDesc: "100 history limit, create 3 accounts per month",
+    infoNote: "WeChat / Xiaohongshu / Weibo / X · AI image gen · 60s cooldown · 5000 chars max",
   }
 };
 
@@ -2206,6 +2216,15 @@ function applyLang() {
   document.getElementById("rewriteDownload").textContent = t("download");
   document.getElementById("soloDownload").textContent = t("download");
   document.getElementById("lightboxDownload").textContent = t("download");
+  // Info banner
+  document.getElementById("infoBadge").textContent = t("infoBadge");
+  document.getElementById("infoLead").textContent = t("infoLead");
+  document.getElementById("infoGuest").textContent = t("infoGuest");
+  document.getElementById("infoGuestDesc").textContent = t("infoGuestDesc");
+  document.getElementById("infoUser").textContent = t("infoUser");
+  document.getElementById("infoUserDesc").textContent = t("infoUserDesc");
+  document.getElementById("infoProDesc").textContent = t("infoProDesc");
+  document.getElementById("infoNote").textContent = t("infoNote");
 }
 
 const STORAGE_KEY = "thought-evolution";
